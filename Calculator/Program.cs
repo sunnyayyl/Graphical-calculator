@@ -56,14 +56,6 @@ namespace Calculator
         Operator,
     }
 
-    public class BetterEnum<TValue>(string name, TValue value)
-    {
-        public string Name { get; private set; } = name;
-        public TValue Value { get; private set; } = value;
-        public static bool operator ==(BetterEnum<TValue> a, BetterEnum<TValue> b) => a.Name == b.Name;
-        public static bool operator !=(BetterEnum<TValue> a, BetterEnum<TValue> b) => a.Name != b.Name;
-    }
-
     public interface Token
     {
         string Literal { get; }
@@ -184,18 +176,39 @@ namespace Calculator
             }
         }
 
-        public bool Is(TokenType tt, char obj = '\0')
+        public bool Is(TokenType tt)
         {
-            var compared = (obj == '\0' ? this.CurrentCharater : obj).ToString();
-            if (compared == "\0")
+            var cc = this.CurrentCharater.ToString();
+            if (cc == "\0")
             {
                 return false;
             }
-            else if (int.TryParse(compared, out _))
+            else if (int.TryParse(cc, out _))
             {
                 return tt == TokenType.Number;
             }
-            else if (Global.OperatorsMap.ContainsKey(compared))
+            else if (Global.OperatorsMap.ContainsKey(cc))
+            {
+                return tt == TokenType.Operator;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public bool PeekIs(TokenType tt)
+        {
+            var cc = this.Peek().ToString();
+            if (cc == "\0")
+            {
+                return false;
+            }
+            else if (int.TryParse(cc, out _))
+            {
+                return tt == TokenType.Number;
+            }
+            else if (Global.OperatorsMap.ContainsKey(cc))
             {
                 return tt == TokenType.Operator;
             }
@@ -254,12 +267,12 @@ namespace Calculator
         }
     }
 
-    public interface Notation
+    public interface INotation
     {
         double Eval();
     }
 
-    public class Number : Notation
+    public class Number : INotation
     {
         public int Value { get; set; }
 
@@ -279,13 +292,13 @@ namespace Calculator
         }
     }
 
-    public class Inflix : Notation
+    public class Inflix : INotation
     {
-        public Notation Lhs { get; set; }
+        public INotation Lhs { get; set; }
         public Operators Op { get; set; }
-        public Notation Rhs { get; set; }
+        public INotation Rhs { get; set; }
 
-        public Inflix(Notation lhs, Operators op, Notation rhs)
+        public Inflix(INotation lhs, Operators op, INotation rhs)
         {
             this.Lhs = lhs;
             this.Op = op;
@@ -364,20 +377,25 @@ namespace Calculator
 
         public bool Is(TokenType t)
         {
-            return CurrentToken.Type == t;
+            return this.CurrentToken.Type == t;
         }
 
-        public Notation
-            ParseToken(Notation lhs, int minPrecedence = 0) // https://en.wikipedia.org/wiki/Operator-precedence_parser
+        public bool PeekIs(TokenType t)
         {
-            while (this.Peek().Type == TokenType.Operator && ((OperatorToken)this.Peek()).Precedence >= minPrecedence)
+            return this.Peek().Type == t;
+        }
+
+        private INotation
+            ParseToken(INotation lhs, int minPrecedence = 0) // https://en.wikipedia.org/wiki/Operator-precedence_parser
+        {
+            while (this.PeekIs(TokenType.Operator) && ((OperatorToken)this.Peek()).Precedence >= minPrecedence)
             {
                 var op = (OperatorToken)this.Peek();
                 this.NextToken();
                 this.NextToken();
                 Debug.Assert(this.CurrentToken.Type == TokenType.Number);
-                Notation rhs = new Number(int.Parse(this.CurrentToken.Literal));
-                while (this.Peek().Type == TokenType.Operator &&
+                INotation rhs = new Number(int.Parse(this.CurrentToken.Literal));
+                while (this.PeekIs(TokenType.Operator) &&
                        ((((OperatorToken)this.Peek()).Precedence > op.Precedence) ||
                         (((OperatorToken)this.Peek()).Precedence == op.Precedence &&
                          ((OperatorToken)this.Peek()).Associative == Direction.Right)))
@@ -391,11 +409,10 @@ namespace Calculator
                 lhs = new Inflix(lhs, op.Operator, rhs);
             }
 
-            Console.WriteLine(lhs);
             return lhs;
         }
 
-        public Notation Parse()
+        public INotation Parse()
         {
             this.CurrentIndex = -1; //reset
             this.NextToken();
@@ -414,11 +431,6 @@ namespace Calculator
         {
             var lexer = new Lexer("2*5+2*4^3");
             var tokens = lexer.ParseAll();
-            for (var i = 0; i < tokens.Count; i++)
-            {
-                Console.WriteLine(tokens[i]);
-            }
-
             var parser = new Parser(lexer);
             var result = parser.Parse();
             Console.WriteLine(result);

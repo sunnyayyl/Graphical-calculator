@@ -286,6 +286,7 @@
     public interface IExpression
     {
         double Eval(Dictionary<char, int> variables);
+        List<Variable> ListVariables(List<Variable> variables);
     }
 
     public class Number : IExpression
@@ -306,6 +307,11 @@
         {
             return this.Value;
         }
+
+        public List<Variable> ListVariables(List<Variable> variables)
+        {
+            return variables;
+        }
     }
 
     public class Variable : IExpression
@@ -325,6 +331,12 @@
         public override string ToString()
         {
             return this.Name.ToString();
+        }
+
+        public List<Variable> ListVariables(List<Variable> variables)
+        {
+            variables.Add(this);
+            return variables;
         }
     }
 
@@ -377,6 +389,12 @@
                 default:
                     throw new NotSupportedException($"Operator {this.Op} is not supported");
             }
+        }
+
+        public List<Variable> ListVariables(List<Variable> variables)
+        {
+            return this.Lhs.ListVariables(new List<Variable>()).Concat(this.Rhs.ListVariables(new List<Variable>()))
+                .Concat(variables).ToList();
         }
     }
 
@@ -524,18 +542,37 @@
     {
         public static void Main(string[] args)
         {
-            var lexer = new Lexer("1+(2+((x+4)+5))");
-            //var lexer = new Lexer("x+2");
-            // var tokens = lexer.ParseAll();
+            Console.Write("Equation to be evaluated: ");
+            var input = Console.ReadLine();
+            if (input == null)
+            {
+                throw new Exception("Null input");
+            }
+
+            //var lexer = new Lexer("1+(2+((x+4)+5))");
+            var lexer = new Lexer(input);
             var parser = new Parser(lexer);
             var result = parser.Parse();
             Console.WriteLine(result);
+            var variables = new Dictionary<char, int>();
+            foreach (var i in result.ListVariables(new List<Variable>()))
+            {
+                Console.Write($"{i} = ");
+                var v = Console.ReadLine();
+                int vint;
+                if (v == null || !int.TryParse(v, out vint))
+                {
+                    throw new Exception("Invalid input");
+                }
+                else
+                {
+                    variables.Add(i.Name, vint);
+                }
+            }
+
             Console.WriteLine(
                 result.Eval(
-                    new Dictionary<char, int>
-                    {
-                        { 'x', 3 }
-                    }
+                    variables
                 )
             );
         }

@@ -54,6 +54,7 @@ namespace Calculator
         EOF,
         Number,
         Operator,
+        Parenthesis,
     }
 
     public interface Token
@@ -70,6 +71,30 @@ namespace Calculator
         public override string ToString()
         {
             return "EOFToken{}";
+        }
+    }
+
+    public class ParenthesisToken : Token
+    {
+        public string Literal { get; private set; }
+        public Direction Associative { get; private set; }
+        public uint Precedence { get; private set; } = 5;
+        public TokenType Type { get; private set; } = TokenType.Parenthesis;
+
+        public ParenthesisToken(string tokenLiteral)
+        {
+            this.Literal = tokenLiteral;
+            switch (this.Literal)
+            {
+                case "(":
+                    this.Associative = Direction.Left;
+                    break;
+                case ")":
+                    this.Associative = Direction.Right;
+                    break;
+                default:
+                    throw new Exception("Invalid parenthesis token");
+            }
         }
     }
 
@@ -191,6 +216,10 @@ namespace Calculator
             {
                 return tt == TokenType.Operator;
             }
+            else if (cc == "(" || cc == ")")
+            {
+                return tt == TokenType.Parenthesis;
+            }
             else
             {
                 return false;
@@ -211,6 +240,10 @@ namespace Calculator
             else if (Global.OperatorsMap.ContainsKey(cc))
             {
                 return tt == TokenType.Operator;
+            }
+            else if (cc == "(" || cc == ")")
+            {
+                return tt == TokenType.Parenthesis;
             }
             else
             {
@@ -242,6 +275,12 @@ namespace Calculator
             else if (this.CurrentIndex >= this.Input.Length)
             {
                 return new EOFToken();
+            }
+            else if (this.CurrentCharater == '(' || this.CurrentCharater == ')')
+            {
+                var token = this.CurrentCharater.ToString();
+                this.NextToken();
+                return new ParenthesisToken(token);
             }
             else
             {
@@ -307,7 +346,21 @@ namespace Calculator
 
         public override string ToString()
         {
-            return "(" + this.Lhs + " " + this.Op + " " + this.Rhs + ")";
+            switch (this.Op)
+            {
+                case (Operators.Plus):
+                    return "(" + Lhs + " + " + Rhs + ")";
+                case (Operators.Minus):
+                    return "(" + Lhs + " - " + Rhs + ")";
+                case (Operators.Multiply):
+                    return "(" + Lhs + " * " + Rhs + ")";
+                case (Operators.Divide):
+                    return "(" + Lhs + " / " + Rhs + ")";
+                case (Operators.Power):
+                    return "(" + Lhs + " ^ " + Rhs + ")";
+                default:
+                    throw new NotSupportedException($"Operator {this.Op} is not supported");
+            }
         }
 
         public double Eval()
@@ -385,16 +438,41 @@ namespace Calculator
             return this.Peek().Type == t;
         }
 
+        private INotation ParsePrimary()
+        {
+            if (this.Is(TokenType.Number))
+            {
+                return new Number(int.Parse(this.CurrentToken.Literal));
+            }
+            else if (this.Is(TokenType.Parenthesis))
+            {
+                this.NextToken();
+                return this.ParseToken(this.ParsePrimary());
+            }
+            else
+            {
+                throw new Exception($"Unexpected token type: {this.CurrentToken.Type}");
+            }
+        }
+
         private INotation
-            ParseToken(INotation lhs, int minPrecedence = 0) // https://en.wikipedia.org/wiki/Operator-precedence_parser
+            ParseToken(INotation lhs, int minPrecedence = 0,
+                bool inParenthesis = false) // https://en.wikipedia.org/wiki/Operator-precedence_parser
         {
             while (this.PeekIs(TokenType.Operator) && ((OperatorToken)this.Peek()).Precedence >= minPrecedence)
             {
+                if (inParenthesis && this.PeekIs(TokenType.Parenthesis) &&
+                    ((ParenthesisToken)this.Peek()).Associative == Direction.Right)
+                {
+                    break;
+                }
+
                 var op = (OperatorToken)this.Peek();
                 this.NextToken();
                 this.NextToken();
-                Debug.Assert(this.CurrentToken.Type == TokenType.Number);
-                INotation rhs = new Number(int.Parse(this.CurrentToken.Literal));
+                // Debug.Assert(this.CurrentToken.Type == TokenType.Number);
+                //INotation rhs = new Number(int.Parse(this.CurrentToken.Literal));
+                var rhs = this.ParsePrimary();
                 while (this.PeekIs(TokenType.Operator) &&
                        ((((OperatorToken)this.Peek()).Precedence > op.Precedence) ||
                         (((OperatorToken)this.Peek()).Precedence == op.Precedence &&
@@ -429,7 +507,7 @@ namespace Calculator
     {
         public static void Main(string[] args)
         {
-            var lexer = new Lexer("2*5+2*4^3");
+            var lexer = new Lexer("2*(1+1*3-1)-10^(2-1)");
             var tokens = lexer.ParseAll();
             var parser = new Parser(lexer);
             var result = parser.Parse();

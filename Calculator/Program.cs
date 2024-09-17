@@ -1,7 +1,4 @@
-﻿using System.Diagnostics;
-using Calculator;
-
-namespace Calculator
+﻿namespace Calculator
 {
     public static class Global
     {
@@ -51,23 +48,23 @@ namespace Calculator
     public enum TokenType
     {
         Invalid,
-        EOF,
+        Eof,
         Number,
         Operator,
         Parenthesis,
         Variable,
     }
 
-    public interface Token
+    public interface IToken
     {
         string Literal { get; }
         TokenType Type { get; }
     }
 
-    public class EOFToken : Token
+    public class EofToken : IToken
     {
         public string Literal { get; private set; } = "\0";
-        public TokenType Type { get; private set; } = TokenType.EOF;
+        public TokenType Type { get; private set; } = TokenType.Eof;
 
         public override string ToString()
         {
@@ -75,7 +72,7 @@ namespace Calculator
         }
     }
 
-    public class ParenthesisToken : Token
+    public class ParenthesisToken : IToken
     {
         public string Literal { get; private set; }
         public Direction Associative { get; private set; }
@@ -99,26 +96,17 @@ namespace Calculator
         }
     }
 
-    public class VariableToken : Token
+    public class VariableToken(string tokenLiteral) : IToken
     {
-        public string Literal { get; private set; }
+        public string Literal { get; private set; } = tokenLiteral;
         public TokenType Type { get; private set; } = TokenType.Variable;
-
-        public VariableToken(string tokenLiteral)
-        {
-            this.Literal = tokenLiteral;
-        }
     }
 
-    public class InvalidToken : Token
+    public class InvalidToken(string literal) : IToken
     {
-        public string Literal { get; private set; }
+        public string Literal { get; private set; } = literal;
         public TokenType Type { get; private set; } = TokenType.Invalid;
 
-        public InvalidToken(string literal)
-        {
-            this.Literal = literal;
-        }
 
         public override string ToString()
         {
@@ -126,7 +114,7 @@ namespace Calculator
         }
     }
 
-    public class OperatorToken : Token
+    public class OperatorToken : IToken
     {
         public string Literal { get; private set; }
         public Operators Operator { get; private set; }
@@ -148,23 +136,10 @@ namespace Calculator
         }
     }
 
-    public class NumberToken : Token
+    public class NumberToken(string tokenLiteral) : IToken
     {
-        public string Literal { get; private set; }
-        public int Value { get; private set; }
+        public string Literal { get; private set; } = tokenLiteral;
         public TokenType Type { get; private set; } = TokenType.Number;
-
-        public NumberToken(string tokenLiteral)
-        {
-            this.Literal = tokenLiteral;
-            this.Value = int.Parse(tokenLiteral);
-        }
-
-        public NumberToken(int tokenValue)
-        {
-            this.Literal = tokenValue.ToString();
-            this.Value = tokenValue;
-        }
 
         public override string ToString()
         {
@@ -172,10 +147,10 @@ namespace Calculator
         }
     }
 
-    public class Lexer // FIXME: Cannot be generalized as there is neither Union or a interface Indexable type? 
+    public class Lexer // FIXME: Cannot be generalized as there is neither Union nor interface Indexable type? 
     {
         public string Input { get; private set; }
-        public char CurrentCharater { get; private set; }
+        public char CurrentCharacter { get; private set; }
         public int CurrentIndex { get; private set; }
 
         public Lexer(string input)
@@ -190,13 +165,13 @@ namespace Calculator
             if (this.CurrentIndex + 1 < this.Input.Length)
             {
                 this.CurrentIndex++;
-                this.CurrentCharater = this.Input[this.CurrentIndex];
+                this.CurrentCharacter = this.Input[this.CurrentIndex];
                 return true;
             }
             else
             {
                 this.CurrentIndex++;
-                this.CurrentCharater = '\0';
+                this.CurrentCharacter = '\0';
                 return false;
             }
         }
@@ -239,7 +214,7 @@ namespace Calculator
 
         public bool Is(TokenType tt)
         {
-            return _is(this.CurrentCharater.ToString(), tt);
+            return _is(this.CurrentCharacter.ToString(), tt);
         }
 
         public bool PeekIs(TokenType tt)
@@ -247,16 +222,15 @@ namespace Calculator
             return _is(this.Peek().ToString(), tt);
         }
 
-        public Token ParseToken()
+        public IToken ParseToken()
         {
-            var result = "";
             if (this.Is(TokenType.Number))
             {
-                result = this.CurrentCharater.ToString();
+                var result = this.CurrentCharacter.ToString();
                 this.NextToken();
                 while (this.Is(TokenType.Number))
                 {
-                    result += this.CurrentCharater;
+                    result += this.CurrentCharacter;
                     this.NextToken();
                 }
 
@@ -264,43 +238,43 @@ namespace Calculator
             }
             else if (this.Is(TokenType.Operator))
             {
-                var op = this.CurrentCharater;
+                var op = this.CurrentCharacter;
                 this.NextToken();
                 return new OperatorToken(op.ToString());
             }
             else if (this.CurrentIndex >= this.Input.Length)
             {
-                return new EOFToken();
+                return new EofToken();
             }
-            else if (this.CurrentCharater == '(' || this.CurrentCharater == ')')
+            else if (this.CurrentCharacter == '(' || this.CurrentCharacter == ')')
             {
-                var token = this.CurrentCharater.ToString();
+                var token = this.CurrentCharacter.ToString();
                 this.NextToken();
                 return new ParenthesisToken(token);
             }
-            else if (char.IsAsciiLetter(this.CurrentCharater) &&
+            else if (char.IsAsciiLetter(this.CurrentCharacter) &&
                      !char.IsAsciiLetter(this.Peek())) // only single letter variable allowed
             {
-                var name = this.CurrentCharater.ToString();
+                var name = this.CurrentCharacter.ToString();
                 this.NextToken();
                 return new VariableToken(name);
             }
             else
             {
-                var literal = this.CurrentCharater;
+                var literal = this.CurrentCharacter;
                 this.NextToken();
                 return new InvalidToken(literal.ToString());
             }
         }
 
-        public List<Token> ParseAll()
+        public List<IToken> ParseAll()
         {
             // Reset
             this.CurrentIndex = -1;
             this.NextToken();
-            var tokens = new List<Token>();
+            var tokens = new List<IToken>();
             tokens.Add(this.ParseToken());
-            while (tokens[^1].Type != TokenType.EOF)
+            while (tokens[^1].Type != TokenType.Eof)
             {
                 tokens.Add(this.ParseToken());
             }
@@ -309,12 +283,12 @@ namespace Calculator
         }
     }
 
-    public interface INotation
+    public interface IExpression
     {
         double Eval(Dictionary<char, int> variables);
     }
 
-    public class Number : INotation
+    public class Number : IExpression
     {
         public int Value { get; private set; }
 
@@ -334,7 +308,7 @@ namespace Calculator
         }
     }
 
-    public class Variable : INotation
+    public class Variable : IExpression
     {
         public char Name { get; private set; }
 
@@ -354,13 +328,13 @@ namespace Calculator
         }
     }
 
-    public class Inflix : INotation
+    public class Infix : IExpression
     {
-        public INotation Lhs { get; private set; }
+        public IExpression Lhs { get; private set; }
         public Operators Op { get; private set; }
-        public INotation Rhs { get; private set; }
+        public IExpression Rhs { get; private set; }
 
-        public Inflix(INotation lhs, Operators op, INotation rhs)
+        public Infix(IExpression lhs, Operators op, IExpression rhs)
         {
             this.Lhs = lhs;
             this.Op = op;
@@ -399,7 +373,7 @@ namespace Calculator
                 case (Operators.Divide):
                     return this.Lhs.Eval(variables) / this.Rhs.Eval(variables);
                 case (Operators.Power):
-                    return Math.Pow((double)this.Lhs.Eval(variables), (double)this.Rhs.Eval(variables));
+                    return Math.Pow(this.Lhs.Eval(variables), this.Rhs.Eval(variables));
                 default:
                     throw new NotSupportedException($"Operator {this.Op} is not supported");
             }
@@ -408,13 +382,14 @@ namespace Calculator
 
     public class Parser // FIXME: A lot of duplicate code
     {
-        public List<Token> Tokens { get; private set; }
+        public List<IToken> Tokens { get; private set; }
         public int CurrentIndex { get; private set; }
-        public Token CurrentToken { get; private set; }
-        private int _parenthesis_level = 0;
+        public IToken CurrentToken { get; private set; }
+        private int _parenthesisLevel;
 
-        public Parser(List<Token> tokens)
+        public Parser(List<IToken> tokens)
         {
+            this.CurrentToken = new InvalidToken("\0"); // To make my IDE stop shouting at me about null
             this.Tokens = tokens;
             CurrentIndex = -1;
             this.NextToken();
@@ -422,6 +397,7 @@ namespace Calculator
 
         public Parser(Lexer lexer)
         {
+            this.CurrentToken = new InvalidToken("\0"); // To make my IDE stop shouting at me about null
             this.Tokens = lexer.ParseAll();
             CurrentIndex = -1;
             this.NextToken();
@@ -440,7 +416,7 @@ namespace Calculator
             }
         }
 
-        public Token Peek()
+        public IToken Peek()
         {
             if (this.CurrentIndex + 1 < this.Tokens.Count)
             {
@@ -462,7 +438,7 @@ namespace Calculator
             return this.Peek().Type == t;
         }
 
-        private INotation ParsePrimary()
+        private IExpression ParsePrimary()
         {
             if (this.Is(TokenType.Number))
             {
@@ -471,8 +447,8 @@ namespace Calculator
             else if (this.Is(TokenType.Parenthesis))
             {
                 this.NextToken();
-                this._parenthesis_level++;
-                return this.ParseToken(this.ParsePrimary(), inParenthesis: true, level: this._parenthesis_level);
+                this._parenthesisLevel++;
+                return this.ParseToken(this.ParsePrimary(), inParenthesis: true, level: this._parenthesisLevel);
             }
             else if (this.Is(TokenType.Variable))
             {
@@ -484,8 +460,8 @@ namespace Calculator
             }
         }
 
-        private INotation
-            ParseToken(INotation lhs, int minPrecedence = 0,
+        private IExpression
+            ParseToken(IExpression lhs, int minPrecedence = 0,
                 bool inParenthesis = false, int level = 0) // https://en.wikipedia.org/wiki/Operator-precedence_parser
         {
             while (this.PeekIs(TokenType.Parenthesis) || this.PeekIs(TokenType.Operator) &&
@@ -500,12 +476,12 @@ namespace Calculator
                     }
 
                     this.NextToken();
-                    this._parenthesis_level--;
+                    this._parenthesisLevel--;
                     break;
                 }
-                else if (this._parenthesis_level > level && inParenthesis)
+                else if (this._parenthesisLevel > level && inParenthesis)
                 {
-                    this._parenthesis_level--;
+                    this._parenthesisLevel--;
                     break;
                 }
 
@@ -526,13 +502,13 @@ namespace Calculator
                         (peekOp.Precedence > op.Precedence ? 1 : 0), inParenthesis: inParenthesis, level: level);
                 }
 
-                lhs = new Inflix(lhs, op.Operator, rhs);
+                lhs = new Infix(lhs, op.Operator, rhs);
             }
 
             return lhs;
         }
 
-        public INotation Parse()
+        public IExpression Parse()
         {
             this.CurrentIndex = -1; //reset
             this.NextToken();

@@ -388,6 +388,7 @@ namespace Calculator
         public List<Token> Tokens { get; private set; }
         public int CurrentIndex { get; private set; }
         public Token CurrentToken { get; private set; }
+        private bool _skippedParenthesis = false;
 
         public Parser(List<Token> tokens)
         {
@@ -447,7 +448,7 @@ namespace Calculator
             else if (this.Is(TokenType.Parenthesis))
             {
                 this.NextToken();
-                return this.ParseToken(this.ParsePrimary());
+                return this.ParseToken(this.ParsePrimary(), inParenthesis: true);
             }
             else
             {
@@ -459,12 +460,28 @@ namespace Calculator
             ParseToken(INotation lhs, int minPrecedence = 0,
                 bool inParenthesis = false) // https://en.wikipedia.org/wiki/Operator-precedence_parser
         {
-            while (this.PeekIs(TokenType.Operator) && ((OperatorToken)this.Peek()).Precedence >= minPrecedence)
+            while (this.PeekIs(TokenType.Parenthesis) || this.PeekIs(TokenType.Operator) &&
+                   ((OperatorToken)this.Peek()).Precedence >= minPrecedence)
             {
                 if (inParenthesis && this.PeekIs(TokenType.Parenthesis) &&
                     ((ParenthesisToken)this.Peek()).Associative == Direction.Right)
                 {
+                    if (!inParenthesis)
+                    {
+                        throw new Exception("Mismatched parenthesis");
+                    }
+
+                    this.NextToken();
+                    this._skippedParenthesis = true;
                     break;
+                }
+                else if (this._skippedParenthesis && inParenthesis)
+                {
+                    break;
+                }
+                else
+                {
+                    this._skippedParenthesis = false;
                 }
 
                 var op = (OperatorToken)this.Peek();
@@ -481,7 +498,7 @@ namespace Calculator
                     var peekOp = (OperatorToken)this.Peek();
                     rhs = this.ParseToken(rhs,
                         (int)op.Precedence +
-                        (peekOp.Precedence > op.Precedence ? 1 : 0));
+                        (peekOp.Precedence > op.Precedence ? 1 : 0), inParenthesis: inParenthesis);
                 }
 
                 lhs = new Inflix(lhs, op.Operator, rhs);
@@ -507,7 +524,7 @@ namespace Calculator
     {
         public static void Main(string[] args)
         {
-            var lexer = new Lexer("2*(1+1*3-1)-10^(2-1)");
+            var lexer = new Lexer("1*(2*3^(4+5))-6/2");
             var tokens = lexer.ParseAll();
             var parser = new Parser(lexer);
             var result = parser.Parse();

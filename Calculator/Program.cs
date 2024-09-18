@@ -466,7 +466,7 @@
             {
                 this.NextToken();
                 this._parenthesisLevel++;
-                return this.ParseToken(this.ParsePrimary(), inParenthesis: true, level: this._parenthesisLevel);
+                return this.ParseToken(this.ParsePrimary(), level: this._parenthesisLevel);
             }
             else if (this.Is(TokenType.Variable))
             {
@@ -480,26 +480,20 @@
 
         private IExpression
             ParseToken(IExpression lhs, int minPrecedence = 0,
-                bool inParenthesis = false, int level = 0) // https://en.wikipedia.org/wiki/Operator-precedence_parser
+                int level = 0) // https://en.wikipedia.org/wiki/Operator-precedence_parser
         {
             while (this.PeekIs(TokenType.Parenthesis) || this.PeekIs(TokenType.Operator) &&
                    ((OperatorToken)this.Peek()).Precedence >= minPrecedence)
             {
-                if (inParenthesis && this.PeekIs(TokenType.Parenthesis) &&
+                if (level > 0 && this.PeekIs(TokenType.Parenthesis) &&
                     ((ParenthesisToken)this.Peek()).Associative == Direction.Right)
                 {
-                    if (!inParenthesis)
-                    {
-                        throw new Exception("Mismatched parenthesis");
-                    }
-
                     this.NextToken();
                     this._parenthesisLevel--;
                     break;
                 }
-                else if (this._parenthesisLevel > level && inParenthesis)
+                else if (level > this._parenthesisLevel)
                 {
-                    this._parenthesisLevel--;
                     break;
                 }
 
@@ -509,7 +503,7 @@
                 // Debug.Assert(this.CurrentToken.Type == TokenType.Number);
                 //INotation rhs = new Number(int.Parse(this.CurrentToken.Literal));
                 var rhs = this.ParsePrimary();
-                while (this.PeekIs(TokenType.Operator) &&
+                while (!(level > this._parenthesisLevel) && this.PeekIs(TokenType.Operator) &&
                        ((((OperatorToken)this.Peek()).Precedence > op.Precedence) ||
                         (((OperatorToken)this.Peek()).Precedence == op.Precedence &&
                          ((OperatorToken)this.Peek()).Associative == Direction.Right)))
@@ -517,7 +511,7 @@
                     var peekOp = (OperatorToken)this.Peek();
                     rhs = this.ParseToken(rhs,
                         (int)op.Precedence +
-                        (peekOp.Precedence > op.Precedence ? 1 : 0), inParenthesis: inParenthesis, level: level);
+                        (peekOp.Precedence > op.Precedence ? 1 : 0), level: level);
                 }
 
                 lhs = new Infix(lhs, op.Operator, rhs);

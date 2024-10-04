@@ -160,6 +160,14 @@
             this.NextToken();
         }
 
+        void ConsumeWhitespaces()
+        {
+            while (this.CurrentCharacter == ' ' || this.CurrentCharacter == '\t')
+            {
+                this.NextToken();
+            }
+        }
+
         public bool NextToken()
         {
             if (this.CurrentIndex + 1 < this.Input.Length)
@@ -224,6 +232,7 @@
 
         public IToken ParseToken()
         {
+            this.ConsumeWhitespaces();
             if (this.Is(TokenType.Number))
             {
                 var result = this.CurrentCharacter.ToString();
@@ -232,6 +241,17 @@
                 {
                     result += this.CurrentCharacter;
                     this.NextToken();
+                }
+
+                if (this.CurrentCharacter == '.')
+                {
+                    result += this.CurrentCharacter;
+                    this.NextToken(); // FIXME: Duplicate code
+                    while (this.Is(TokenType.Number))
+                    {
+                        result += this.CurrentCharacter;
+                        this.NextToken();
+                    }
                 }
 
                 return new NumberToken(result);
@@ -291,9 +311,9 @@
 
     public class Number : IExpression
     {
-        public int Value { get; private set; }
+        public double Value { get; private set; }
 
-        public Number(int value)
+        public Number(double value)
         {
             this.Value = value;
         }
@@ -460,7 +480,7 @@
         {
             if (this.Is(TokenType.Number))
             {
-                return new Number(int.Parse(this.CurrentToken.Literal));
+                return new Number(double.Parse(this.CurrentToken.Literal));
             }
             else if (this.Is(TokenType.Parenthesis))
             {

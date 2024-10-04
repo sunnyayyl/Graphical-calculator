@@ -59,12 +59,17 @@
     {
         string Literal { get; }
         TokenType Type { get; }
+
+        int Start { get; }
+        int End { get; }
     }
 
-    public class EofToken : IToken
+    public class EofToken(int start, int end) : IToken
     {
         public string Literal { get; private set; } = "\0";
         public TokenType Type { get; private set; } = TokenType.Eof;
+        public int Start { get; private set; } = start;
+        public int End { get; private set; } = end;
 
         public override string ToString()
         {
@@ -78,9 +83,13 @@
         public Direction Associative { get; private set; }
         public uint Precedence { get; private set; } = 5;
         public TokenType Type { get; private set; } = TokenType.Parenthesis;
+        public int Start { get; private set; }
+        public int End { get; private set; }
 
-        public ParenthesisToken(string tokenLiteral)
+        public ParenthesisToken(string tokenLiteral, int start, int end)
         {
+            this.Start = start;
+            this.End = end;
             this.Literal = tokenLiteral;
             switch (this.Literal)
             {
@@ -96,17 +105,20 @@
         }
     }
 
-    public class VariableToken(string tokenLiteral) : IToken
+    public class VariableToken(string tokenLiteral, int start, int end) : IToken
     {
         public string Literal { get; private set; } = tokenLiteral;
         public TokenType Type { get; private set; } = TokenType.Variable;
+        public int Start { get; private set; } = start;
+        public int End { get; private set; } = end;
     }
 
-    public class InvalidToken(string literal) : IToken
+    public class InvalidToken(string literal, int start, int end) : IToken
     {
         public string Literal { get; private set; } = literal;
         public TokenType Type { get; private set; } = TokenType.Invalid;
-
+        public int Start { get; private set; } = start;
+        public int End { get; private set; } = end;
 
         public override string ToString()
         {
@@ -121,9 +133,13 @@
         public uint Precedence { get; private set; }
         public Direction Associative { get; private set; }
         public TokenType Type { get; private set; } = TokenType.Operator;
+        public int Start { get; private set; }
+        public int End { get; private set; }
 
-        public OperatorToken(string tokenLiteral)
+        public OperatorToken(string tokenLiteral, int start, int end)
         {
+            this.Start = start;
+            this.End = end;
             this.Literal = tokenLiteral;
             this.Operator = Global.OperatorsMap[this.Literal];
             this.Precedence = Global.PrecedenceMap[this.Operator];
@@ -136,10 +152,12 @@
         }
     }
 
-    public class NumberToken(string tokenLiteral) : IToken
+    public class NumberToken(string tokenLiteral, int start, int end) : IToken
     {
         public string Literal { get; private set; } = tokenLiteral;
         public TokenType Type { get; private set; } = TokenType.Number;
+        public int Start { get; private set; } = start;
+        public int End { get; private set; } = end;
 
         public override string ToString()
         {
@@ -235,6 +253,7 @@
             this.ConsumeWhitespaces();
             if (this.Is(TokenType.Number))
             {
+                var start = this.CurrentIndex;
                 var result = this.CurrentCharacter.ToString();
                 this.NextToken();
                 while (this.Is(TokenType.Number))
@@ -254,36 +273,36 @@
                     }
                 }
 
-                return new NumberToken(result);
+                return new NumberToken(result, start, this.CurrentIndex - 1);
             }
             else if (this.Is(TokenType.Operator))
             {
                 var op = this.CurrentCharacter;
                 this.NextToken();
-                return new OperatorToken(op.ToString());
+                return new OperatorToken(op.ToString(), this.CurrentIndex - 2, this.CurrentIndex - 1);
             }
             else if (this.CurrentIndex >= this.Input.Length)
             {
-                return new EofToken();
+                return new EofToken(this.CurrentIndex, this.CurrentIndex);
             }
             else if (this.CurrentCharacter == '(' || this.CurrentCharacter == ')')
             {
                 var token = this.CurrentCharacter.ToString();
                 this.NextToken();
-                return new ParenthesisToken(token);
+                return new ParenthesisToken(token, this.CurrentIndex - 1, this.CurrentIndex - 1);
             }
             else if (char.IsAsciiLetter(this.CurrentCharacter) &&
                      !char.IsAsciiLetter(this.Peek())) // only single letter variable allowed
             {
                 var name = this.CurrentCharacter.ToString();
                 this.NextToken();
-                return new VariableToken(name);
+                return new VariableToken(name, this.CurrentIndex - 1, this.CurrentIndex - 1);
             }
             else
             {
                 var literal = this.CurrentCharacter;
                 this.NextToken();
-                return new InvalidToken(literal.ToString());
+                return new InvalidToken(literal.ToString(), this.CurrentIndex - 1, this.CurrentIndex - 1);
             }
         }
 
@@ -418,6 +437,70 @@
         }
     }
 
+    [Serializable]
+    public class SyntaxError : Exception
+    {
+        public List<TokenType> Expected { get; private set; }
+        public int Start { get; private set; }
+        public int End { get; private set; }
+        public TokenType Type { get; private set; }
+
+        public SyntaxError(TokenType expected, IToken got)
+        {
+            this.Expected = new List<TokenType> { expected };
+            this.Start = got.Start;
+            this.End = got.End;
+            this.Type = got.Type;
+        }
+
+        public SyntaxError(List<TokenType> expected, IToken got)
+        {
+            this.Expected = expected;
+            this.Start = got.Start;
+            this.End = got.End;
+            this.Type = got.Type;
+        }
+
+        public SyntaxError(TokenType expected, int start, int end, TokenType got)
+        {
+            this.Expected = new List<TokenType> { expected };
+            this.Start = start;
+            this.End = end;
+            this.Type = got;
+        }
+
+        public SyntaxError(List<TokenType> expected, int start, int end, TokenType got)
+        {
+            this.Expected = expected;
+            this.Start = start;
+            this.End = end;
+            this.Type = got;
+        }
+
+        public override string Message
+        {
+            get
+            {
+                if (this.Start == this.End)
+                {
+                    return
+                        $"Syntax error: Expected {string.Join(", ", Expected)}, got {this.Type} at character {this.Start}";
+                }
+                else
+                {
+                    return
+                        $"Syntax error: Expected {string.Join(", ", Expected)}, got {this.Type} at character {this.Start} to {this.End}";
+                }
+            }
+        }
+
+        protected SyntaxError(
+            System.Runtime.Serialization.SerializationInfo info,
+            System.Runtime.Serialization.StreamingContext context) : base(info, context)
+        {
+        }
+    }
+
     public class Parser // FIXME: A lot of duplicate code
     {
         public List<IToken> Tokens { get; private set; }
@@ -427,7 +510,7 @@
 
         public Parser(List<IToken> tokens)
         {
-            this.CurrentToken = new InvalidToken("\0"); // To make my IDE stop shouting at me about null
+            this.CurrentToken = new InvalidToken("\0", 0, 0); // To make my IDE stop shouting at me about null
             this.Tokens = tokens;
             CurrentIndex = -1;
             this.NextToken();
@@ -435,7 +518,7 @@
 
         public Parser(Lexer lexer)
         {
-            this.CurrentToken = new InvalidToken("\0"); // To make my IDE stop shouting at me about null
+            this.CurrentToken = new InvalidToken("\0", 0, 0); // To make my IDE stop shouting at me about null
             this.Tokens = lexer.ParseAll();
             CurrentIndex = -1;
             this.NextToken();
@@ -494,7 +577,19 @@
             }
             else
             {
-                throw new Exception($"Unexpected token type: {this.CurrentToken.Type}");
+                throw new SyntaxError([TokenType.Number, TokenType.Parenthesis, TokenType.Variable], this.CurrentToken);
+            }
+        }
+
+        private static T CastOrThrow<T>(IToken token, TokenType expectation) where T : IToken
+        {
+            if (token is T)
+            {
+                return (T)token;
+            }
+            else
+            {
+                throw new SyntaxError(expectation, token);
             }
         }
 
@@ -517,7 +612,7 @@
                     break;
                 }
 
-                var op = (OperatorToken)this.Peek();
+                var op = CastOrThrow<OperatorToken>(this.Peek(), TokenType.Operator);
                 this.NextToken();
                 this.NextToken();
                 // Debug.Assert(this.CurrentToken.Type == TokenType.Number);
@@ -528,7 +623,7 @@
                         (((OperatorToken)this.Peek()).Precedence == op.Precedence &&
                          ((OperatorToken)this.Peek()).Associative == Direction.Right)))
                 {
-                    var peekOp = (OperatorToken)this.Peek();
+                    var peekOp = CastOrThrow<OperatorToken>(this.Peek(), TokenType.Operator);
                     rhs = this.ParseToken(rhs,
                         (int)op.Precedence +
                         (peekOp.Precedence > op.Precedence ? 1 : 0), level: level);
@@ -540,7 +635,7 @@
             return lhs;
         }
 
-        public IExpression Parse()
+        private IExpression ParseAll()
         {
             this.CurrentIndex = -1; //reset
             this.NextToken();
@@ -549,6 +644,18 @@
             //    throw new Exception("Notation have to start with a number");
             //}
             return this.ParseToken(this.ParsePrimary());
+        }
+
+        public IExpression Parse()
+        {
+            var result = this.ParseAll();
+            if (this._parenthesisLevel > 0)
+            {
+                throw new SyntaxError(TokenType.Parenthesis, this.CurrentToken.End + 1, this.CurrentToken.End + 1,
+                    TokenType.Eof);
+            }
+
+            return result;
         }
     }
 

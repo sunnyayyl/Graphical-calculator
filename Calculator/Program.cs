@@ -36,6 +36,12 @@
         Right
     }
 
+    public enum ErrorType
+    {
+        Syntax,
+        InvalidToken,
+    }
+
     public enum Operators
     {
         Plus,
@@ -170,6 +176,7 @@
         public string Input { get; private set; }
         public char CurrentCharacter { get; private set; }
         public int CurrentIndex { get; private set; }
+        private char _peek;
 
         public Lexer(string input)
         {
@@ -192,6 +199,11 @@
             {
                 this.CurrentIndex++;
                 this.CurrentCharacter = this.Input[this.CurrentIndex];
+                if (this.CurrentIndex + 1 < this.Input.Length)
+                {
+                    this._peek = this.Input[this.CurrentIndex + 1];
+                }
+
                 return true;
             }
             else
@@ -206,7 +218,7 @@
         {
             if (this.CurrentIndex + 1 < this.Input.Length)
             {
-                return this.Input[this.CurrentIndex + 1];
+                return this._peek;
             }
             else
             {
@@ -437,13 +449,59 @@
         }
     }
 
+    public interface IErrorMessage
+    {
+        public int Start { get; }
+        public int End { get; }
+        string Message { get; }
+        public ErrorType ErrorType { get; }
+    }
+
     [Serializable]
-    public class SyntaxError : Exception
+    public class InvalidTokenError : Exception, IErrorMessage
+    {
+        public int Start { get; private set; }
+        public int End { get; private set; }
+        public ErrorType ErrorType { get; private set; } = ErrorType.InvalidToken;
+        public string StringLiteral { get; private set; }
+
+        public InvalidTokenError(int start, int end, string stringLiteral)
+        {
+            this.Start = start;
+            this.End = end;
+            this.StringLiteral = stringLiteral;
+        }
+
+        public override string Message
+        {
+            get
+            {
+                if (this.Start == this.End)
+                {
+                    return $"Invalid token at character {this.Start}";
+                }
+                else
+                {
+                    return $"Invalid token at character {this.Start} to {this.End}";
+                }
+            }
+        }
+
+        protected InvalidTokenError(
+            System.Runtime.Serialization.SerializationInfo info,
+            System.Runtime.Serialization.StreamingContext context) : base(info, context)
+        {
+        }
+    }
+
+    [Serializable]
+    public class SyntaxError : Exception, IErrorMessage
     {
         public List<TokenType> Expected { get; private set; }
         public int Start { get; private set; }
         public int End { get; private set; }
-        public TokenType Type { get; private set; }
+        public TokenType? Type { get; private set; }
+        public ErrorType ErrorType { get; private set; } = ErrorType.Syntax;
 
         public SyntaxError(TokenType expected, IToken got)
         {
@@ -507,9 +565,12 @@
         public int CurrentIndex { get; private set; }
         public IToken CurrentToken { get; private set; }
         private int _parenthesisLevel;
+        private IToken _peek;
+        private string _literal;
 
-        public Parser(List<IToken> tokens)
+        public Parser(List<IToken> tokens, string literal)
         {
+            _literal = literal;
             this.CurrentToken = new InvalidToken("\0", 0, 0); // To make my IDE stop shouting at me about null
             this.Tokens = tokens;
             CurrentIndex = -1;
@@ -518,6 +579,7 @@
 
         public Parser(Lexer lexer)
         {
+            _literal = lexer.Input;
             this.CurrentToken = new InvalidToken("\0", 0, 0); // To make my IDE stop shouting at me about null
             this.Tokens = lexer.ParseAll();
             CurrentIndex = -1;
@@ -530,6 +592,20 @@
             {
                 this.CurrentIndex++;
                 this.CurrentToken = this.Tokens[this.CurrentIndex];
+                if (this.CurrentIndex + 1 < this.Tokens.Count)
+                {
+                    this._peek = this.Tokens[this.CurrentIndex + 1];
+                }
+
+                if (this.CurrentToken.Type == TokenType.Invalid)
+                {
+                    throw new InvalidTokenError(this.CurrentToken.Start, this.CurrentToken.End,
+                        ((InvalidToken)this.CurrentToken).Literal);
+                }
+                else if (this._peek.Type == TokenType.Invalid)
+                {
+                    throw new InvalidTokenError(this._peek.Start, this._peek.End, ((InvalidToken)this._peek).Literal);
+                }
             }
             else
             {
@@ -541,7 +617,7 @@
         {
             if (this.CurrentIndex + 1 < this.Tokens.Count)
             {
-                return this.Tokens[this.CurrentIndex + 1];
+                return this._peek;
             }
             else
             {
@@ -654,6 +730,11 @@
                 throw new SyntaxError(TokenType.Parenthesis, this.CurrentToken.End + 1, this.CurrentToken.End + 1,
                     TokenType.Eof);
             }
+            else if (this.CurrentIndex < this.Tokens.Count - 1)
+            {
+                throw new SyntaxError(TokenType.Eof, this.CurrentToken.End + 1, this.CurrentToken.End + 1,
+                    this.Tokens[this.CurrentIndex + 1].Type);
+            }
 
             return result;
         }
@@ -663,25 +744,47 @@
     {
         public static void Main(string[] args)
         {
-            Console.Write("Equation to be evaluated: ");
-            var input = Console.ReadLine();
-            if (input == null)
-            {
-                throw new Exception("Null input");
-            }
+            var inputPrompt = "Equation to be evaluated: ";
+            Console.Write(inputPrompt);
+            var input = Console.ReadLine()!;
 
             //var lexer = new Lexer("1+(2+((x+4)+5))");
             var lexer = new Lexer(input);
-            var parser = new Parser(lexer);
-            var result = parser.Parse();
+            Parser parser;
+            IExpression result;
+            try
+            {
+                parser = new Parser(lexer);
+                result = parser.Parse();
+            }
+            catch (Exception ex) when (ex is IErrorMessage)
+            {
+                var e = (IErrorMessage)ex;
+                int seperatorLength;
+                if ((inputPrompt.Length + input.Length) > e.Message.Length)
+                {
+                    seperatorLength = inputPrompt.Length + input.Length;
+                }
+                else
+                {
+                    seperatorLength = e.Message.Length;
+                }
+
+                Console.WriteLine(new string('-', seperatorLength));
+                Console.WriteLine(e.Message);
+                Console.WriteLine(input);
+                Console.WriteLine(new string(' ', e.Start) + new string('^', e.End - e.Start + 1));
+                Environment.Exit(1);
+                throw;
+            }
+
             Console.WriteLine(result);
             var variables = new Dictionary<char, int>();
             foreach (var i in result.ListVariables(new List<Variable>()))
             {
                 Console.Write($"{i} = ");
-                var v = Console.ReadLine();
-                int vint;
-                if (v == null || !int.TryParse(v, out vint))
+                var v = Console.ReadLine()!;
+                if (!int.TryParse(v, out var vint)!)
                 {
                     throw new Exception("Invalid input");
                 }
@@ -691,11 +794,10 @@
                 }
             }
 
-            Console.WriteLine(
-                result.Eval(
-                    variables
-                )
-            );
+
+            Console.WriteLine(result.Eval(
+                variables
+            ));
         }
     }
 }

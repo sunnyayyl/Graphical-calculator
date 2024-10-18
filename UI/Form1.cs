@@ -6,8 +6,8 @@ namespace UI;
 public partial class Form1 : Form
 {
     private int? _mouseOldX, _mouseOldY;
-    private float _xScale = 0.1f;
-    private float _yScale = 0.1f;
+    private float _xScale = 1.0f;
+    private float _yScale = 1.0f;
     private float _xOffset = 0.0f;
     private float _yOffset = 0.0f;
     private IExpression? _expression;
@@ -64,11 +64,19 @@ public partial class Form1 : Form
             {
                 input['x'] = x;
                 float yRaw;
-                float plotX;
-                float plotY;
-                yRaw = (float)(expression.Eval(input) * (double)_yScale);
-                plotX = x + halfWidth;
-                plotY = -yRaw * _yScale + halfHeight;
+                try
+                {
+                    yRaw = (float)expression.Eval(input);
+                }
+                catch (Exception ex) when (ex is IErrorMessage)
+                {
+                    this._hasError = true;
+                    Console.WriteLine(ex.Message);
+                    break;
+                }
+
+                var plotX = (x + halfWidth) * this._xScale;
+                var plotY = (-yRaw + halfHeight) * this._yScale;
                 if (Math.Abs(plotX) > Width || Math.Abs(plotY) > Height)
                 {
                     last = null;
@@ -94,8 +102,11 @@ public partial class Form1 : Form
             this.pictureBox1.BackColor = Color.White;
         }
 
-        e.Graphics.DrawLine(new Pen(Color.Black), new PointF(0, halfHeight), new PointF(width, halfHeight));
-        e.Graphics.DrawLine(new Pen(Color.Black), new PointF(halfWidth, 0), new PointF(halfWidth, height));
+        //var maxY = Math.Clamp(halfHeight * this._yScale, 0, height);
+        e.Graphics.DrawLine(new Pen(Color.Black), new PointF(0, halfHeight * this._yScale),
+            new PointF(width, halfHeight * this._yScale));
+        e.Graphics.DrawLine(new Pen(Color.Black), new PointF(halfWidth * this._xScale, 0),
+            new PointF(halfWidth * this._xScale, height));
     }
 
     private void Form1_Load(object sender, EventArgs e)
@@ -123,8 +134,9 @@ public partial class Form1 : Form
         {
             if (_mouseOldX.HasValue && _mouseOldY.HasValue)
             {
-                this._xOffset += (float)e.X - _mouseOldX.Value;
-                this._yOffset += (float)e.Y - _mouseOldY.Value;
+                this._xOffset +=
+                    ((float)e.X - _mouseOldX.Value) * (1 / this._xScale); // Change sensitivity based on scale
+                this._yOffset += ((float)e.Y - _mouseOldY.Value) * (1 / this._xScale);
             }
 
             _mouseOldX = e.X;
@@ -136,5 +148,17 @@ public partial class Form1 : Form
             _mouseOldX = null;
             _mouseOldY = null;
         }
+    }
+
+    protected override void OnMouseWheel(MouseEventArgs e)
+    {
+        this._xScale =
+            Math.Clamp(this._xScale + e.Delta * 0.001f, float.Epsilon,
+                float.PositiveInfinity); // Prevent scale from going to 0 and below
+        this._yScale = Math.Clamp(this._yScale + e.Delta * 0.001f, float.Epsilon, float.PositiveInfinity);
+        Debug.WriteLine($"Scale: {this._xScale}, {this._yScale}");
+        var mouseX = (float)e.X;
+        this.pictureBox1.Refresh();
+        base.OnMouseWheel(e);
     }
 }

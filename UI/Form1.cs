@@ -5,9 +5,11 @@ namespace UI;
 
 public partial class Form1 : Form
 {
-    private int? _mouseOldX, _mouseOldY = null;
-    float _xScale, _yScale = 1.0f;
-    private float _xOffset, _yOffset = 0.0f;
+    private int? _mouseOldX, _mouseOldY;
+    private float _xScale = 0.1f;
+    private float _yScale = 0.1f;
+    private float _xOffset = 0.0f;
+    private float _yOffset = 0.0f;
     private IExpression? _expression;
     private bool _hasError;
 
@@ -35,13 +37,12 @@ public partial class Form1 : Form
             Debug.WriteLine(ex.Message);
             this._hasError = true;
         }
-
-        this.pictureBox1.Refresh();
     }
 
     private void textBox1_TextChanged(object sender, EventArgs e)
     {
         this.ReParse();
+        this.pictureBox1.Refresh();
     }
 
     private void pictureBox1_Paint(object sender, PaintEventArgs e)
@@ -59,41 +60,28 @@ public partial class Form1 : Form
         };
         if (this._expression is { } expression)
         {
-            for (float x = -halfWidth; x <= width - halfWidth; x += 0.1f)
+            for (var x = -halfWidth; x <= width - halfWidth; x += 0.1f)
             {
-                input['x'] = (double)x;
+                input['x'] = x;
                 float yRaw;
                 float plotX;
                 float plotY;
-                try
+                yRaw = (float)(expression.Eval(input) * (double)_yScale);
+                plotX = x + halfWidth;
+                plotY = -yRaw * _yScale + halfHeight;
+                if (Math.Abs(plotX) > Width || Math.Abs(plotY) > Height)
                 {
-                    yRaw = (float)expression.Eval(input);
-                    plotX = x + halfWidth;
-                    plotY = -yRaw + halfHeight;
-                }
-                catch (OverflowException ex)
-                {
-                    Debug.WriteLine("Warning: Overflow exception occured while calculating value to plot");
                     last = null;
                     continue;
                 }
 
-                try
+                var current = new PointF(plotX, plotY);
+                if (last.HasValue)
                 {
-                    var current = new PointF(plotX, plotY);
-                    if (last.HasValue)
-                    {
-                        e.Graphics.DrawLine(pen, last.Value, current);
-                    }
+                    e.Graphics.DrawLine(pen, last.Value, current);
+                }
 
-                    last = current;
-                }
-                catch (OverflowException ex)
-                {
-                    Debug.WriteLine("Fatal: Overflow exception occured while plotting");
-                    last = null;
-                    break;
-                }
+                last = current;
             }
         }
 

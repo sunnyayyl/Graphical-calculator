@@ -5,97 +5,99 @@ namespace UI;
 
 public partial class Form1 : Form
 {
-    int? mouseOldX = null, mouseOldY = null;
-    float xScale, YScale = 0.0f;
-    float xOffset, yOffset = 0.0f;
-    IExpression? expression;
-    bool hasError;
-    List<PointF> points = [];
+    private int? _mouseOldX, _mouseOldY = null;
+    float _xScale, _yScale = 1.0f;
+    private float _xOffset, _yOffset = 0.0f;
+    private IExpression? _expression;
+    private bool _hasError;
 
     public Form1()
     {
         InitializeComponent();
     }
 
-    void reParse()
+    private void ReParse()
     {
-        this.hasError = false;
-        this.expression = null;
+        var stopwatch = new Stopwatch();
+        this._hasError = false;
+        this._expression = null;
         try
         {
-            var size = pictureBox1.Size;
-            var width = size.Width;
-            var height = size.Height;
+            stopwatch.Start();
             var l = new Lexer(textBox1.Text.Trim());
             var p = new Parser(l);
-            this.expression = p.Parse();
-            var result = p.Parse();
+            this._expression = p.Parse();
+            stopwatch.Stop();
+            Debug.WriteLine("Successfully parsed expression in " + stopwatch.ElapsedMilliseconds + "ms");
         }
         catch (Exception ex) when (ex is IErrorMessage)
         {
             Debug.WriteLine(ex.Message);
-            this.hasError = true;
+            this._hasError = true;
         }
 
         this.pictureBox1.Refresh();
     }
 
-    void textBox1_TextChanged(object sender, EventArgs e)
+    private void textBox1_TextChanged(object sender, EventArgs e)
     {
-        this.reParse();
+        this.ReParse();
     }
 
     private void pictureBox1_Paint(object sender, PaintEventArgs e)
     {
         PointF? last = null;
-        var size = pictureBox1.Size;
+        var size = this.pictureBox1.Size;
         var width = size.Width;
         var height = size.Height;
-        float halfWidth = width / 2 + xOffset;
-        float halfHeight = height / 2 + yOffset;
-        var xScale = 20;
-        var yScale = 20;
-        try
+        var halfWidth = (float)width / 2 + this._xOffset;
+        var halfHeight = (float)height / 2 + this._yOffset;
+        var pen = new Pen(Color.Red);
+        var input = new Dictionary<char, double>
         {
-            if (this.expression is IExpression expression)
+            ['x'] = 0
+        };
+        if (this._expression is { } expression)
+        {
+            for (float x = -halfWidth; x <= width - halfWidth; x += 0.1f)
             {
-                for (double x = -halfWidth; x < halfWidth; x += 0.1)
+                input['x'] = (double)x;
+                float yRaw;
+                float plotX;
+                float plotY;
+                try
                 {
-                    var input = new Dictionary<char, double>
-                    {
-                        ['x'] = x
-                    };
-                    var yRaw = expression.Eval(input);
-                    float plotX;
-                    float plotY;
-                    try
-                    {
-                        plotX = (float)((x * xScale + halfWidth));
-                        plotY = (float)((-yRaw * yScale + halfHeight));
-                        var current = new PointF(plotX, plotY);
-                        if (last.HasValue)
-                        {
-                            e.Graphics.DrawLine(new Pen(Color.Red), last.Value, current);
-                        }
+                    yRaw = (float)expression.Eval(input);
+                    plotX = x + halfWidth;
+                    plotY = -yRaw + halfHeight;
+                }
+                catch (OverflowException ex)
+                {
+                    Debug.WriteLine("Warning: Overflow exception occured while calculating value to plot");
+                    last = null;
+                    continue;
+                }
 
-                        last = current;
-                    }
-                    catch (OverflowException ex)
+                try
+                {
+                    var current = new PointF(plotX, plotY);
+                    if (last.HasValue)
                     {
-                        Debug.WriteLine(ex.Message);
-                        last = null;
-                        continue;
+                        e.Graphics.DrawLine(pen, last.Value, current);
                     }
+
+                    last = current;
+                }
+                catch (OverflowException ex)
+                {
+                    Debug.WriteLine("Fatal: Overflow exception occured while plotting");
+                    last = null;
+                    break;
                 }
             }
         }
-        catch (Exception ex) when (ex is IErrorMessage)
-        {
-            Debug.WriteLine(ex.Message);
-            hasError = true;
-        }
 
-        if (hasError)
+        if (this._hasError)
         {
             this.pictureBox1.BackColor = Color.Pink;
         }
@@ -114,7 +116,7 @@ public partial class Form1 : Form
 
     private void Form1_ResizeEnd(object sender, EventArgs e)
     {
-        this.reParse();
+        this.pictureBox1.Refresh();
     }
 
     protected override void WndProc(ref Message m)
@@ -131,20 +133,20 @@ public partial class Form1 : Form
     {
         if (Control.MouseButtons == MouseButtons.Left)
         {
-            if (mouseOldX.HasValue && mouseOldY.HasValue)
+            if (_mouseOldX.HasValue && _mouseOldY.HasValue)
             {
-                this.xOffset += (float)e.X - mouseOldX.Value;
-                this.yOffset += (float)e.Y - mouseOldY.Value;
+                this._xOffset += (float)e.X - _mouseOldX.Value;
+                this._yOffset += (float)e.Y - _mouseOldY.Value;
             }
 
-            mouseOldX = e.X;
-            mouseOldY = e.Y;
-            this.reParse();
+            _mouseOldX = e.X;
+            _mouseOldY = e.Y;
+            this.pictureBox1.Refresh();
         }
         else
         {
-            mouseOldX = null;
-            mouseOldY = null;
+            _mouseOldX = null;
+            _mouseOldY = null;
         }
     }
 }

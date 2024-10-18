@@ -336,7 +336,7 @@
 
     public interface IExpression
     {
-        double Eval(Dictionary<char, int> variables);
+        double Eval(Dictionary<char, double> variables);
         List<Variable> ListVariables(List<Variable> variables);
     }
 
@@ -354,7 +354,7 @@
             return this.Value.ToString();
         }
 
-        public double Eval(Dictionary<char, int> variables)
+        public double Eval(Dictionary<char, double> variables)
         {
             return this.Value;
         }
@@ -374,7 +374,7 @@
             this.Name = name;
         }
 
-        public double Eval(Dictionary<char, int> variables)
+        public double Eval(Dictionary<char, double> variables)
         {
             return variables[this.Name];
         }
@@ -423,7 +423,7 @@
             }
         }
 
-        public double Eval(Dictionary<char, int> variables)
+        public double Eval(Dictionary<char, double> variables)
         {
             switch (this.Op)
             {
@@ -602,7 +602,7 @@
                     throw new InvalidTokenError(this.CurrentToken.Start, this.CurrentToken.End,
                         ((InvalidToken)this.CurrentToken).Literal);
                 }
-                else if (this._peek.Type == TokenType.Invalid)
+                else if (this._peek != null && this._peek.Type == TokenType.Invalid)
                 {
                     throw new InvalidTokenError(this._peek.Start, this._peek.End, ((InvalidToken)this._peek).Literal);
                 }
@@ -640,6 +640,12 @@
             if (this.Is(TokenType.Number))
             {
                 return new Number(double.Parse(this.CurrentToken.Literal));
+            }
+            else if (this.Is(TokenType.Operator) && ((OperatorToken)this.CurrentToken).Operator == Operators.Minus &&
+                     !this.PeekIs(TokenType.Operator))
+            {
+                this.NextToken();
+                return new Infix(new Number(-1), Operators.Multiply, this.ParsePrimary());
             }
             else if (this.Is(TokenType.Parenthesis))
             {
@@ -715,10 +721,6 @@
         {
             this.CurrentIndex = -1; //reset
             this.NextToken();
-            //if (this.CurrentToken.Type != TokenType.Number)
-            //{
-            //    throw new Exception("Notation have to start with a number");
-            //}
             return this.ParseToken(this.ParsePrimary());
         }
 
@@ -730,11 +732,12 @@
                 throw new SyntaxError(TokenType.Parenthesis, this.CurrentToken.End + 1, this.CurrentToken.End + 1,
                     TokenType.Eof);
             }
-            else if (this.CurrentIndex < this.Tokens.Count - 1)
+            else if (this.CurrentIndex < this.Tokens.Count - 2)
             {
                 throw new SyntaxError(TokenType.Eof, this.CurrentToken.End + 1, this.CurrentToken.End + 1,
                     this.Tokens[this.CurrentIndex + 1].Type);
             }
+
 
             return result;
         }
@@ -746,15 +749,19 @@
         {
             var inputPrompt = "Equation to be evaluated: ";
             Console.Write(inputPrompt);
-            var input = Console.ReadLine()!;
-
-            //var lexer = new Lexer("1+(2+((x+4)+5))");
+            var input = Console.ReadLine()!.Trim();
             var lexer = new Lexer(input);
+            foreach (var token in lexer.ParseAll())
+            {
+                Console.WriteLine(token);
+            }
+
             Parser parser;
             IExpression result;
             try
             {
                 parser = new Parser(lexer);
+                result = parser.Parse();
                 result = parser.Parse();
             }
             catch (Exception ex) when (ex is IErrorMessage)
@@ -778,23 +785,25 @@
                 throw;
             }
 
-            Console.WriteLine(result);
-            var variables = new Dictionary<char, int>();
+            var variables = new Dictionary<char, double>();
             foreach (var i in result.ListVariables(new List<Variable>()))
             {
-                Console.Write($"{i} = ");
-                var v = Console.ReadLine()!;
-                if (!int.TryParse(v, out var vint)!)
+                if (!variables.ContainsKey(i.Name))
                 {
-                    throw new Exception("Invalid input");
-                }
-                else
-                {
-                    variables.Add(i.Name, vint);
+                    Console.Write($"{i} = ");
+                    var v = Console.ReadLine()!;
+                    if (!double.TryParse(v, out var vint)!)
+                    {
+                        throw new Exception("Invalid input");
+                    }
+                    else
+                    {
+                        variables.Add(i.Name, vint);
+                    }
                 }
             }
 
-
+            Console.WriteLine(new string('-', inputPrompt.Length + input.Length));
             Console.WriteLine(result.Eval(
                 variables
             ));

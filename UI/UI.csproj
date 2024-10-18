@@ -12,4 +12,10 @@
         <ProjectReference Include="..\Calculator\Calculator.csproj"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <Compile Update="GraphControl.cs">
+            <SubType>UserControl</SubType>
+        </Compile>
+    </ItemGroup>
+
 </Project>

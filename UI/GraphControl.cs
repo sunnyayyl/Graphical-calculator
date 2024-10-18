@@ -6,6 +6,7 @@ namespace UI
 {
     public partial class GraphControl : UserControl
     {
+        public float ScrollSensitivity = 0.099f;
         private List<IExpression> _expressions = [];
         private bool _hasError;
         private int? _mouseOldX, _mouseOldY;
@@ -33,10 +34,21 @@ namespace UI
             var height = size.Height;
             var halfWidth = (float)width / 2 + this._xOffset;
             var halfHeight = (float)height / 2 + this._yOffset;
-            pe.Graphics.DrawLine(new Pen(Color.Black), new PointF(0, halfHeight * this._yScale),
-                new PointF(width, halfHeight * this._yScale));
-            pe.Graphics.DrawLine(new Pen(Color.Black), new PointF(halfWidth * this._xScale, 0),
-                new PointF(halfWidth * this._xScale, height));
+            var xMid = halfWidth * this._xScale;
+            var yMid = halfHeight * this._yScale;
+            try
+            {
+                pe.Graphics.DrawLine(new Pen(Color.Black), new PointF(0, yMid),
+                    new PointF(width, yMid));
+                pe.Graphics.DrawLine(new Pen(Color.Black), new PointF(xMid, 0),
+                    new PointF(xMid, height));
+            }
+            catch (OverflowException exp)
+            {
+                this._hasError = true;
+                Debug.WriteLine("Overflow exception occured while drawing axis");
+            }
+
             if (this._hasError)
             {
                 this.BackColor = Color.Pink;
@@ -91,14 +103,24 @@ namespace UI
 
         protected override void OnMouseWheel(MouseEventArgs e)
         {
-            this._xScale =
-                Math.Clamp(this._xScale + e.Delta * 0.001f, float.Epsilon,
-                    float.PositiveInfinity); // Prevent scale from going to 0 and below
-            this._yScale = Math.Clamp(this._yScale + e.Delta * 0.001f, float.Epsilon, float.PositiveInfinity);
+            this._xScale = this._xScale + e.Delta * this.ScrollSensitivity;
+            this._yScale = this._yScale + e.Delta * this.ScrollSensitivity;
             Debug.WriteLine($"Scale: {this._xScale}, {this._yScale}");
-            var mouseX = (float)e.X;
+            // this._xOffset += e.X / this._xScale - (this.Size.Width/2.0f+this._xOffset);
+            // this._yOffset +=  -(e.Y/this._yScale- (this.Size.Height/2.0f+this._yOffset));
+            this.ClampValues();
             this.Refresh();
             base.OnMouseWheel(e);
+        }
+
+        private void ClampValues()
+        {
+            this._xOffset = Math.Clamp(this._xOffset, float.MinValue, float.MaxValue);
+            this._yOffset = Math.Clamp(this._yOffset, float.MinValue, float.MaxValue);
+            this._xScale =
+                Math.Clamp(this._xScale, float.Epsilon,
+                    float.PositiveInfinity); // Prevent scale from going to 0 and below
+            this._yScale = Math.Clamp(this._yScale, float.Epsilon, float.PositiveInfinity);
         }
 
         protected override void OnMouseMove(MouseEventArgs e)
@@ -112,6 +134,7 @@ namespace UI
                     this._yOffset += ((float)e.Y - _mouseOldY.Value) * (1 / this._xScale);
                 }
 
+                this.ClampValues();
                 _mouseOldX = e.X;
                 _mouseOldY = e.Y;
                 this.Refresh();
@@ -131,14 +154,12 @@ namespace UI
             base.OnResize(e);
         }
 
-        [Browsable(true)]
         public void ClearExpressions()
         {
             this._hasError = false;
             this._expressions.Clear();
         }
 
-        [Browsable(true)]
         public void AddExpression(IExpression expression)
         {
             this._expressions.Add(expression);

@@ -81,7 +81,9 @@ namespace UI
 
                         var plotX = (x + halfWidth) * this._xScale;
                         var plotY = (-yRaw + halfHeight) * this._yScale;
-                        if (Math.Abs(plotX) > Width || Math.Abs(plotY) > Height)
+                        var toleranceX = width * 0.2;
+                        var toleranceY = height * 0.2;
+                        if (Math.Abs(plotX) >= Width + toleranceX || Math.Abs(plotY) >= Height + toleranceY)
                         {
                             last = null;
                             continue;

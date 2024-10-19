@@ -35,19 +35,17 @@ namespace UI
             stopwatch.Start();
             var outOfBoundsCount = 0;
             this._renderError = false;
-            var size = this.Size;
-            var width = size.Width;
-            var height = size.Height;
-            var halfWidth = (float)width / 2 + this._xOffset;
-            var halfHeight = (float)height / 2 + this._yOffset;
+
+            var halfWidth = (float)this.Width / 2 + this._xOffset;
+            var halfHeight = (float)this.Height / 2 + this._yOffset;
             var xMid = halfWidth * this._xScale;
             var yMid = halfHeight * this._yScale;
             try
             {
                 pe.Graphics.DrawLine(new Pen(Color.Black), new PointF(0, yMid),
-                    new PointF(width, yMid));
+                    new PointF(this.Width, yMid));
                 pe.Graphics.DrawLine(new Pen(Color.Black), new PointF(xMid, 0),
-                    new PointF(xMid, height));
+                    new PointF(xMid, this.Height));
             }
             catch (OverflowException exp)
             {
@@ -63,14 +61,15 @@ namespace UI
             {
                 this.BackColor = Color.White;
                 var pen = new Pen(Color.Red);
-                var input = new Dictionary<char, double>
+
+                Parallel.ForEach(this._expressions, expression =>
                 {
-                    ['x'] = 0
-                };
-                PointF? last = null;
-                foreach (var expression in this._expressions)
-                {
-                    for (var x = -halfWidth; x <= width - halfWidth; x += RenderSteps)
+                    var input = new Dictionary<char, double>
+                    {
+                        ['x'] = 0
+                    };
+                    PointF? last = null;
+                    for (var x = -halfWidth; x <= this.Width - halfWidth; x += RenderSteps)
                     {
                         var plotX = (x + halfWidth) * this._xScale;
                         if (float.IsInfinity(plotX) || float.IsNaN(plotX) || Math.Abs(plotX) > Width)
@@ -104,16 +103,19 @@ namespace UI
                         var current = new PointF(plotX, plotY);
                         if (last.HasValue)
                         {
-                            pe.Graphics.DrawLine(pen, last.Value, current);
+                            lock (pe.Graphics)
+                            {
+                                pe.Graphics.DrawLine(pen, last.Value, current);
+                            }
                         }
 
                         last = current;
                     }
-                }
+                });
             }
 
             stopwatch.Stop();
-            Debug.WriteLine($"Calculated {width / this.RenderSteps} points in {stopwatch.ElapsedMilliseconds}ms");
+            Debug.WriteLine($"Calculated {Width / this.RenderSteps} points in {stopwatch.ElapsedMilliseconds}ms");
             Debug.WriteLineIf(outOfBoundsCount > 0, $"Skipped {outOfBoundsCount} out of bound points");
             base.OnPaint(pe);
         }
@@ -182,6 +184,7 @@ namespace UI
 
         protected override void OnResize(EventArgs e)
         {
+            // this.ResetViewport(); // Should I reset the viewport on resize?
             this.Refresh();
             base.OnResize(e);
         }

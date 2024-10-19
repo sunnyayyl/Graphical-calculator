@@ -33,6 +33,7 @@ public partial class Form1 : Form
         {
             this.graphControl1.ClearExpressions();
             this.graphControl1.AddExpression(expression);
+            this.graphControl1.AddExpression(new Variable('x'));
         }
 
         this.graphControl1.Refresh();

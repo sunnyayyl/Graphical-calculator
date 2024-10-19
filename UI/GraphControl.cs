@@ -6,6 +6,7 @@ namespace UI
 {
     public partial class GraphControl : UserControl
     {
+        public float RenderSteps = 0.01f;
         public float ScrollSensitivity = 0.099f;
         private List<IExpression> _expressions = [];
         private bool _hasError;
@@ -14,6 +15,7 @@ namespace UI
         private float _yScale = 1.0f;
         private float _xOffset = 0.0f;
         private float _yOffset = 0.0f;
+        private bool _renderError;
 
         public GraphControl()
         {
@@ -29,6 +31,7 @@ namespace UI
 
         protected override void OnPaint(PaintEventArgs pe)
         {
+            this._renderError = false;
             var size = this.Size;
             var width = size.Width;
             var height = size.Height;
@@ -45,11 +48,11 @@ namespace UI
             }
             catch (OverflowException exp)
             {
-                this._hasError = true;
+                this._renderError = true;
                 Debug.WriteLine("Overflow exception occured while drawing axis");
             }
 
-            if (this._hasError)
+            if (this._hasError || this._renderError)
             {
                 this.BackColor = Color.Pink;
             }
@@ -64,7 +67,7 @@ namespace UI
                 PointF? last = null;
                 foreach (var expression in this._expressions)
                 {
-                    for (var x = -halfWidth; x <= width - halfWidth; x += 0.1f)
+                    for (var x = -halfWidth; x <= width - halfWidth; x += RenderSteps)
                     {
                         input['x'] = x;
                         float yRaw;
@@ -170,6 +173,28 @@ namespace UI
         public void MarkError()
         {
             this._hasError = true;
+        }
+
+        public (float x, float y) GetScale()
+        {
+            return (this._xScale, this._yScale);
+        }
+
+        public (float x, float y) GetOffset()
+        {
+            return (this._xOffset, this._yOffset);
+        }
+
+        public void SetScale(float x, float y)
+        {
+            this._xScale = x;
+            this._yScale = y;
+        }
+
+        public void SetOffset(float x, float y)
+        {
+            this._xOffset = x;
+            this._yOffset = y;
         }
     }
 }

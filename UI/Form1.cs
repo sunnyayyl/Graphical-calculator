@@ -42,4 +42,11 @@ public partial class Form1 : Form
     {
         this.ReParse();
     }
+
+    private void viewport_reset_Click(object sender, EventArgs e)
+    {
+        this.graphControl1.SetOffset(0f, 0f);
+        this.graphControl1.SetScale(1f, 1f);
+        this.graphControl1.Refresh();
+    }
 }

@@ -7,7 +7,7 @@ namespace UI
     public partial class GraphControl : UserControl
     {
         public float RenderSteps = 0.01f;
-        public float ScrollSensitivity = 0.099f;
+        public float ScrollSensitivity = 0.01f;
         private List<IExpression> _expressions = [];
         private bool _hasError;
         private int? _mouseOldX, _mouseOldY;
@@ -108,11 +108,17 @@ namespace UI
 
         protected override void OnMouseWheel(MouseEventArgs e)
         {
-            this._xScale = this._xScale + e.Delta * this.ScrollSensitivity;
-            this._yScale = this._yScale + e.Delta * this.ScrollSensitivity;
-            Debug.WriteLine($"Scale: {this._xScale}, {this._yScale}");
-            // this._xOffset += e.X / this._xScale - (this.Size.Width/2.0f+this._xOffset);
-            // this._yOffset +=  -(e.Y/this._yScale- (this.Size.Height/2.0f+this._yOffset));
+            var mouseX = e.Location.X / this._xScale - ((this.Width / 2f) + this._xOffset);
+            var mouseY = -(e.Location.Y / this._yScale - ((this.Height / 2f) + this._yOffset));
+            this._xOffset -= e.Location.X / this._xScale;
+            this._yOffset -= e.Location.Y / this._yScale;
+            this._xScale += e.Delta * ScrollSensitivity;
+            this._yScale += e.Delta * ScrollSensitivity;
+            this._xOffset += e.Location.X / this._xScale;
+            this._yOffset += e.Location.Y / this._yScale;
+            //this._xOffset += mouseX;
+            //this._yOffset -= mouseY;
+            Debug.WriteLine($"{mouseX}, {mouseY}");
             this.ClampValues();
             this.Refresh();
             base.OnMouseWheel(e);

@@ -122,22 +122,27 @@ namespace UI
         {
             // var mouseX = e.Location.X / this._xScale - ((this.Width / 2f) + this._xOffset);
             // var mouseY = -(e.Location.Y / this._yScale - ((this.Height / 2f) + this._yOffset));
-            var newXScale = this._xScale + e.Delta * ScrollSensitivity;
-            var newYScale = this._yScale + e.Delta * ScrollSensitivity;
+            this.Zoom(e.Delta * ScrollSensitivity, e.Delta * ScrollSensitivity, e.Location.X, e.Location.Y);
+            this.Refresh();
+            base.OnMouseWheel(e);
+        }
+
+        public void Zoom(float xFactor, float yFactor, float midX, float midY)
+        {
+            var newXScale = this._xScale + xFactor;
+            var newYScale = this._yScale + yFactor;
             if (newXScale < float.Epsilon || newYScale < float.Epsilon)
             {
                 return;
             }
 
-            this._xOffset -= e.Location.X / this._xScale;
-            this._yOffset -= e.Location.Y / this._yScale;
+            this._xOffset -= midX / this._xScale;
+            this._yOffset -= midY / this._yScale;
             this._xScale = newXScale;
             this._yScale = newYScale;
-            this._xOffset += e.Location.X / this._xScale;
-            this._yOffset += e.Location.Y / this._yScale;
+            this._xOffset += midX / this._xScale;
+            this._yOffset += midY / this._yScale;
             this.ClampValues();
-            this.Refresh();
-            base.OnMouseWheel(e);
         }
 
         private void ClampValues()
@@ -146,7 +151,7 @@ namespace UI
             this._yOffset = Math.Clamp(this._yOffset, float.MinValue, float.MaxValue);
             this._xScale =
                 Math.Clamp(this._xScale, float.Epsilon,
-                    float.PositiveInfinity); // Prevent scale from going to 0 and below
+                    float.PositiveInfinity); // Prevent division by zero and negative scale
             this._yScale = Math.Clamp(this._yScale, float.Epsilon, float.PositiveInfinity);
         }
 
@@ -179,6 +184,13 @@ namespace UI
         {
             this.Refresh();
             base.OnResize(e);
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            this.ResetViewport();
+            this.Invalidate();
+            base.OnLoad(e);
         }
 
         public void ClearExpressions()
@@ -217,6 +229,14 @@ namespace UI
         {
             this._xOffset = x;
             this._yOffset = y;
+        }
+
+        public void ResetViewport()
+        {
+            this.SetOffset(0f, 0f);
+            this.SetScale(1f, 1f);
+            var avg = (this.Width + this.Height) / 2f / 10f;
+            this.Zoom(avg, avg, this.Width / 2f, this.Height / 2f);
         }
     }
 }

@@ -31,6 +31,9 @@ namespace UI
 
         protected override void OnPaint(PaintEventArgs pe)
         {
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+            var outOfBoundsCount = 0;
             this._renderError = false;
             var size = this.Size;
             var width = size.Width;
@@ -69,6 +72,14 @@ namespace UI
                 {
                     for (var x = -halfWidth; x <= width - halfWidth; x += RenderSteps)
                     {
+                        var plotX = (x + halfWidth) * this._xScale;
+                        if (float.IsInfinity(plotX) || float.IsNaN(plotX) || Math.Abs(plotX) > Width)
+                        {
+                            last = null;
+                            outOfBoundsCount++;
+                            continue;
+                        }
+
                         input['x'] = x;
                         float yRaw;
                         try
@@ -82,13 +93,11 @@ namespace UI
                             break;
                         }
 
-                        var plotX = (x + halfWidth) * this._xScale;
                         var plotY = (-yRaw + halfHeight) * this._yScale;
-                        var toleranceX = width * 0.2;
-                        var toleranceY = height * 0.2;
-                        if (Math.Abs(plotX) >= Width + toleranceX || Math.Abs(plotY) >= Height + toleranceY)
+                        if (Math.Abs(plotY) > Height || float.IsNaN(plotY) || float.IsInfinity(plotY))
                         {
                             last = null;
+                            outOfBoundsCount++;
                             continue;
                         }
 
@@ -103,22 +112,29 @@ namespace UI
                 }
             }
 
+            stopwatch.Stop();
+            Debug.WriteLine($"Calculated {width / this.RenderSteps} points in {stopwatch.ElapsedMilliseconds}ms");
+            Debug.WriteLineIf(outOfBoundsCount > 0, $"Skipped {outOfBoundsCount} out of bound points");
             base.OnPaint(pe);
         }
 
         protected override void OnMouseWheel(MouseEventArgs e)
         {
-            var mouseX = e.Location.X / this._xScale - ((this.Width / 2f) + this._xOffset);
-            var mouseY = -(e.Location.Y / this._yScale - ((this.Height / 2f) + this._yOffset));
+            // var mouseX = e.Location.X / this._xScale - ((this.Width / 2f) + this._xOffset);
+            // var mouseY = -(e.Location.Y / this._yScale - ((this.Height / 2f) + this._yOffset));
+            var newXScale = this._xScale + e.Delta * ScrollSensitivity;
+            var newYScale = this._yScale + e.Delta * ScrollSensitivity;
+            if (newXScale < float.Epsilon || newYScale < float.Epsilon)
+            {
+                return;
+            }
+
             this._xOffset -= e.Location.X / this._xScale;
             this._yOffset -= e.Location.Y / this._yScale;
-            this._xScale += e.Delta * ScrollSensitivity;
-            this._yScale += e.Delta * ScrollSensitivity;
+            this._xScale = newXScale;
+            this._yScale = newYScale;
             this._xOffset += e.Location.X / this._xScale;
             this._yOffset += e.Location.Y / this._yScale;
-            //this._xOffset += mouseX;
-            //this._yOffset -= mouseY;
-            Debug.WriteLine($"{mouseX}, {mouseY}");
             this.ClampValues();
             this.Refresh();
             base.OnMouseWheel(e);

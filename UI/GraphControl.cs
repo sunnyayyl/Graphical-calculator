@@ -42,18 +42,18 @@ namespace UI
             var halfHeight = (float)this.Height / 2 + this._yOffset;
             var xMid = halfWidth * this._xScale;
             var yMid = halfHeight * this._yScale;
-            try
+            if (!(float.IsInfinity(xMid) || float.IsNaN(xMid) || Math.Abs(xMid) > this.Width))
             {
-                pe.Graphics.DrawLine(new Pen(Color.Black), new PointF(0, yMid),
-                    new PointF(this.Width, yMid));
                 pe.Graphics.DrawLine(new Pen(Color.Black), new PointF(xMid, 0),
                     new PointF(xMid, this.Height));
             }
-            catch (OverflowException exp)
+
+            if (!(float.IsInfinity(yMid) || float.IsNaN(yMid) || Math.Abs(yMid) > this.Height))
             {
-                this._renderError = true;
-                Debug.WriteLine("Overflow exception occured while drawing axis");
+                pe.Graphics.DrawLine(new Pen(Color.Black), new PointF(0, yMid),
+                    new PointF(this.Width, yMid));
             }
+
 
             if (this._hasError || this._renderError)
             {

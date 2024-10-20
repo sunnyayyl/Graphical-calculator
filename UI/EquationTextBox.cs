@@ -52,7 +52,7 @@ public partial class EquationTextBox : UserControl
 
     private void button1_Click(object sender, EventArgs e)
     {
-        Debug.WriteLine("DELETE");
         this.Delete(this);
+        GraphRefresh?.Invoke();
     }
 }

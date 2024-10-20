@@ -78,7 +78,7 @@ namespace UI
             if (!this.DesignMode)
             {
                 Debug.WriteLine(
-                    $"Calculated ~{Width / this.SampleDistance * this.Equations.Count} points in {stopwatch.ElapsedMilliseconds}ms");
+                    $"Calculated ~{Width / (Width * (this.SampleDistance / this._xScale)) * this.Equations.Count} points in {stopwatch.ElapsedMilliseconds}ms");
                 Debug.WriteLineIf(outOfBoundsCount > 0, $"Skipped {outOfBoundsCount} out of bound points");
             }
 

@@ -6,7 +6,7 @@ namespace UI
 {
     public partial class GraphControl : UserControl
     {
-        public float RenderSteps = 0.01f;
+        public float SampleDistance = 10f; // Distance between each point calculated, lower is more accurate but slower
         public float ScrollSensitivity = 0.01f;
         private List<IExpression> _expressions = [];
         private bool _hasError;
@@ -69,31 +69,24 @@ namespace UI
                         ['x'] = 0
                     };
                     PointF? last = null;
-                    for (var x = -halfWidth; x <= this.Width - halfWidth; x += RenderSteps)
+                    for (var plotX = 0f; plotX <= Width; plotX += Width / this.SampleDistance)
                     {
-                        var plotX = (x + halfWidth) * this._xScale;
-                        if (float.IsInfinity(plotX) || float.IsNaN(plotX) || Math.Abs(plotX) > Width)
-                        {
-                            last = null;
-                            outOfBoundsCount++;
-                            continue;
-                        }
-
-                        input['x'] = x;
-                        float yRaw;
+                        var mathX = plotX / this._xScale - halfWidth;
+                        input['x'] = mathX;
+                        float mathY;
                         try
                         {
-                            yRaw = (float)expression.Eval(input);
+                            mathY = (float)expression.Eval(input);
                         }
                         catch (Exception ex) when (ex is IErrorMessage)
                         {
                             this._hasError = true;
-                            Console.WriteLine(ex.Message);
+                            Debug.WriteLine(ex.Message);
                             break;
                         }
 
-                        var plotY = (-yRaw + halfHeight) * this._yScale;
-                        if (Math.Abs(plotY) > Height || float.IsNaN(plotY) || float.IsInfinity(plotY))
+                        var plotY = (halfHeight - mathY) * this._yScale;
+                        if (float.IsInfinity(plotY) || float.IsNaN(plotY) || Math.Abs(plotY) > this.Height)
                         {
                             last = null;
                             outOfBoundsCount++;
@@ -115,7 +108,7 @@ namespace UI
             }
 
             stopwatch.Stop();
-            Debug.WriteLine($"Calculated {Width / this.RenderSteps} points in {stopwatch.ElapsedMilliseconds}ms");
+            Debug.WriteLine($"Calculated {Width / this.SampleDistance} points in {stopwatch.ElapsedMilliseconds}ms");
             Debug.WriteLineIf(outOfBoundsCount > 0, $"Skipped {outOfBoundsCount} out of bound points");
             base.OnPaint(pe);
         }

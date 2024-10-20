@@ -6,9 +6,10 @@ namespace UI
 {
     public partial class GraphControl : UserControl
     {
-        public float SampleDistance = 10f; // Distance between each point calculated, lower is more accurate but slower
+        public float
+            SampleDistance = 0.05f; // Distance between each point calculated, lower is more accurate but slower
+
         public float ScrollSensitivity = 0.01f;
-        private List<IExpression> _expressions = [];
         private bool _hasError;
         private int? _mouseOldX, _mouseOldY;
         private float _xScale = 1.0f;
@@ -16,6 +17,7 @@ namespace UI
         private float _xOffset = 0.0f;
         private float _yOffset = 0.0f;
         private bool _renderError;
+        public List<LineEquation> Equations = [];
 
         public GraphControl()
         {
@@ -61,56 +63,73 @@ namespace UI
             {
                 this.BackColor = Color.White;
                 var pen = new Pen(Color.Red);
-
-                Parallel.ForEach(this._expressions, expression =>
+                Parallel.ForEach(this.Equations, equation =>
                 {
-                    var input = new Dictionary<char, double>
-                    {
-                        ['x'] = 0
-                    };
-                    PointF? last = null;
-                    for (var plotX = 0f; plotX <= Width; plotX += Width / this.SampleDistance)
-                    {
-                        var mathX = plotX / this._xScale - halfWidth;
-                        input['x'] = mathX;
-                        float mathY;
-                        try
-                        {
-                            mathY = (float)expression.Eval(input);
-                        }
-                        catch (Exception ex) when (ex is IErrorMessage)
-                        {
-                            this._hasError = true;
-                            Debug.WriteLine(ex.Message);
-                            break;
-                        }
-
-                        var plotY = (halfHeight - mathY) * this._yScale;
-                        if (float.IsInfinity(plotY) || float.IsNaN(plotY) || Math.Abs(plotY) > this.Height)
-                        {
-                            last = null;
-                            outOfBoundsCount++;
-                            continue;
-                        }
-
-                        var current = new PointF(plotX, plotY);
-                        if (last.HasValue)
-                        {
-                            lock (pe.Graphics)
-                            {
-                                pe.Graphics.DrawLine(pen, last.Value, current);
-                            }
-                        }
-
-                        last = current;
-                    }
+                    var expression = equation.Expression;
+                    outOfBoundsCount += this.PlotPoint(pe, pen, halfWidth, halfHeight, expression);
                 });
+                // if (this._expressions.Count > 0)
+                // {
+                //     outOfBoundsCount += this.PlotPoint(pe, pen, halfWidth, halfHeight, this._expressions[0]);
+                // }
             }
 
             stopwatch.Stop();
-            Debug.WriteLine($"Calculated {Width / this.SampleDistance} points in {stopwatch.ElapsedMilliseconds}ms");
-            Debug.WriteLineIf(outOfBoundsCount > 0, $"Skipped {outOfBoundsCount} out of bound points");
+            if (!this.DesignMode)
+            {
+                Debug.WriteLine(
+                    $"Calculated {Width / this.SampleDistance} points in {stopwatch.ElapsedMilliseconds}ms");
+                Debug.WriteLineIf(outOfBoundsCount > 0, $"Skipped {outOfBoundsCount} out of bound points");
+            }
+
             base.OnPaint(pe);
+        }
+
+        private int PlotPoint(PaintEventArgs pe, Pen pen, float halfWidth, float halfHeight, IExpression expression)
+        {
+            var outOfBoundsCount = 0;
+            var input = new Dictionary<char, double>
+            {
+                ['x'] = 0
+            };
+            PointF? last = null;
+            for (var plotX = 0f; plotX <= Width; plotX += Width * (this.SampleDistance / this._xScale))
+            {
+                var mathX = plotX / this._xScale - halfWidth;
+                input['x'] = mathX;
+                float mathY;
+                try
+                {
+                    mathY = (float)expression.Eval(input);
+                }
+                catch (Exception ex) when (ex is IErrorMessage)
+                {
+                    this._hasError = true;
+                    Debug.WriteLine(ex.Message);
+                    break;
+                }
+
+                var plotY = (halfHeight - mathY) * this._yScale;
+                if (float.IsInfinity(plotY) || float.IsNaN(plotY) || Math.Abs(plotY) > this.Height)
+                {
+                    last = null;
+                    outOfBoundsCount++;
+                    continue;
+                }
+
+                var current = new PointF(plotX, plotY);
+                if (last.HasValue)
+                {
+                    lock (pe.Graphics)
+                    {
+                        pe.Graphics.DrawLine(pen, last.Value, current);
+                    }
+                }
+
+                last = current;
+            }
+
+            return outOfBoundsCount;
         }
 
         protected override void OnMouseWheel(MouseEventArgs e)
@@ -192,12 +211,12 @@ namespace UI
         public void ClearExpressions()
         {
             this._hasError = false;
-            this._expressions.Clear();
+            this.Equations.Clear();
         }
 
-        public void AddExpression(IExpression expression)
+        public void AddExpression(IExpression expression, Color color)
         {
-            this._expressions.Add(expression);
+            this.Equations.Add(new LineEquation(expression, color));
         }
 
         public void MarkError()

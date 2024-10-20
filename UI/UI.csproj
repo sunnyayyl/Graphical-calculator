@@ -16,6 +16,12 @@
         <Compile Update="GraphControl.cs">
             <SubType>UserControl</SubType>
         </Compile>
+        <Compile Update="EquationTextBox.cs">
+            <SubType>UserControl</SubType>
+        </Compile>
+        <Compile Update="EquationListView.cs">
+            <SubType>UserControl</SubType>
+        </Compile>
     </ItemGroup>
 
 </Project>

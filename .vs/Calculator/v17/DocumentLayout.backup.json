@@ -7,20 +7,20 @@
       "RelativeMoniker": "D:0:0:{1D757DE4-8058-46A9-A811-CD1D763C2863}|UI\\UI.csproj|solutionrelative:ui\\equationlistview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{1D757DE4-8058-46A9-A811-CD1D763C2863}|UI\\UI.csproj|C:\\Users\\Sunny\\RiderProjects\\Calculator\\ui\\equationtextbox.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
-      "RelativeMoniker": "D:0:0:{1D757DE4-8058-46A9-A811-CD1D763C2863}|UI\\UI.csproj|solutionrelative:ui\\equationtextbox.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{1D757DE4-8058-46A9-A811-CD1D763C2863}|UI\\UI.csproj|c:\\users\\sunny\\riderprojects\\calculator\\ui\\equationtextbox.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{1D757DE4-8058-46A9-A811-CD1D763C2863}|UI\\UI.csproj|solutionrelative:ui\\equationtextbox.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{1D757DE4-8058-46A9-A811-CD1D763C2863}|UI\\UI.csproj|c:\\users\\sunny\\riderprojects\\calculator\\ui\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{1D757DE4-8058-46A9-A811-CD1D763C2863}|UI\\UI.csproj|solutionrelative:ui\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{1D757DE4-8058-46A9-A811-CD1D763C2863}|UI\\UI.csproj|C:\\Users\\Sunny\\RiderProjects\\Calculator\\ui\\equationtextbox.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
+      "RelativeMoniker": "D:0:0:{1D757DE4-8058-46A9-A811-CD1D763C2863}|UI\\UI.csproj|solutionrelative:ui\\equationtextbox.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
     },
     {
       "AbsoluteMoniker": "D:0:0:{1D757DE4-8058-46A9-A811-CD1D763C2863}|UI\\UI.csproj|C:\\Users\\Sunny\\RiderProjects\\Calculator\\ui\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
       "RelativeMoniker": "D:0:0:{1D757DE4-8058-46A9-A811-CD1D763C2863}|UI\\UI.csproj|solutionrelative:ui\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1D757DE4-8058-46A9-A811-CD1D763C2863}|UI\\UI.csproj|c:\\users\\sunny\\riderprojects\\calculator\\ui\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1D757DE4-8058-46A9-A811-CD1D763C2863}|UI\\UI.csproj|solutionrelative:ui\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{1D757DE4-8058-46A9-A811-CD1D763C2863}|UI\\UI.csproj|c:\\users\\sunny\\riderprojects\\calculator\\ui\\equationlistview.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -63,32 +63,32 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 1,
               "Title": "EquationTextBox.cs",
               "DocumentMoniker": "C:\\Users\\Sunny\\RiderProjects\\Calculator\\UI\\EquationTextBox.cs",
               "RelativeDocumentMoniker": "UI\\EquationTextBox.cs",
-              "ToolTip": "C:\\Users\\Sunny\\RiderProjects\\Calculator\\UI\\EquationTextBox.cs*",
-              "RelativeToolTip": "UI\\EquationTextBox.cs*",
-              "ViewState": "AgIAABEAAAAAAAAAAAArwDMAAAAlAAAAAAAAAA==",
+              "ToolTip": "C:\\Users\\Sunny\\RiderProjects\\Calculator\\UI\\EquationTextBox.cs",
+              "RelativeToolTip": "UI\\EquationTextBox.cs",
+              "ViewState": "AgIAAAUAAAAAAAAAAAAQwB4AAAAiAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-10-20T19:24:24.168Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "EquationTextBox.cs [Design]",
               "DocumentMoniker": "C:\\Users\\Sunny\\RiderProjects\\Calculator\\UI\\EquationTextBox.cs",
               "RelativeDocumentMoniker": "UI\\EquationTextBox.cs",
-              "ToolTip": "C:\\Users\\Sunny\\RiderProjects\\Calculator\\UI\\EquationTextBox.cs [Design]*",
-              "RelativeToolTip": "UI\\EquationTextBox.cs [Design]*",
+              "ToolTip": "C:\\Users\\Sunny\\RiderProjects\\Calculator\\UI\\EquationTextBox.cs [Design]",
+              "RelativeToolTip": "UI\\EquationTextBox.cs [Design]",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-10-20T19:13:52.037Z",
               "EditorCaption": " [Design]"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "Form1.cs",
               "DocumentMoniker": "C:\\Users\\Sunny\\RiderProjects\\Calculator\\UI\\Form1.cs",
               "RelativeDocumentMoniker": "UI\\Form1.cs",
@@ -101,7 +101,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 3,
               "Title": "Form1.cs [Design]",
               "DocumentMoniker": "C:\\Users\\Sunny\\RiderProjects\\Calculator\\UI\\Form1.cs",
               "RelativeDocumentMoniker": "UI\\Form1.cs",

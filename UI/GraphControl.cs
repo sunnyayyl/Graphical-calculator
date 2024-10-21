@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using Calculator;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace UI
 {
@@ -9,6 +10,8 @@ namespace UI
         public float
             SampleDistance = 0.05f; // Distance between each point calculated, lower is more accurate but slower
 
+        private int _initalBitmapCount = 5;
+        private Bitmap[] _bitmaps = []; // Can grow dynamically, but never shrink 
         public float ScrollSensitivity = 0.01f;
         private bool _hasError;
         private int? _mouseOldX, _mouseOldY;
@@ -23,6 +26,7 @@ namespace UI
         {
             InitializeComponent();
             this.EnableDoubleBuffering();
+            this.InitializeBitmapArray(this._initalBitmapCount);
         }
 
         private void EnableDoubleBuffering()
@@ -33,9 +37,6 @@ namespace UI
 
         protected override void OnPaint(PaintEventArgs pe)
         {
-            // var stopwatch = new Stopwatch();
-            // stopwatch.Start();
-            // var outOfBoundsCount = 0;
             this._renderError = false;
 
             var halfWidth = (float)this.Width / 2 + this._xOffset;
@@ -62,31 +63,53 @@ namespace UI
             else
             {
                 this.BackColor = Color.White;
-                var pen = new Pen(Color.Red);
-                Parallel.ForEach(this.Equations, equation =>
+                if (this.Equations.Count > this._bitmaps.Length)
                 {
-                    var expression = equation.Expression;
-                    // outOfBoundsCount += this.PlotPoint(pe, pen, halfWidth, halfHeight, expression);
-                    this.PlotPoint(pe, pen, halfWidth, halfHeight, expression);
-                });
-                // if (this._expressions.Count > 0)
-                // {
-                //     outOfBoundsCount += this.PlotPoint(pe, pen, halfWidth, halfHeight, this._expressions[0]);
-                // }
-            }
+                    this.InitializeBitmapArray(this.Equations.Count);
+                }
+                else if (this.Equations.Count < this._bitmaps.Length)
+                {
+                    for (var i = this.Equations.Count; i < this._bitmaps.Length; i++)
+                    {
+                        this._bitmaps[i] = new Bitmap(this.Width, this.Height); //Empty bitmap
+                    }
+                }
 
-            // stopwatch.Stop();
-            // if (!this.DesignMode)
-            // {
-            //     Debug.WriteLine(
-            //         $"Calculated ~{Width / (Width * (this.SampleDistance / this._xScale)) * this.Equations.Count} points in {stopwatch.ElapsedMilliseconds}ms");
-            //     Debug.WriteLineIf(outOfBoundsCount > 0, $"Skipped {outOfBoundsCount} out of bound points");
-            // }
+                Parallel.For(0, this.Equations.Count, i =>
+                {
+                    var equation = this.Equations[i];
+                    var expression = equation.Expression;
+                    using var pen = new Pen(equation.Color);
+                    using (var graphics = Graphics.FromImage(this._bitmaps[i]))
+                    {
+                        graphics.Clear(Color.Transparent);
+                        this.PlotPoint(graphics, pen, halfWidth, halfHeight, expression);
+                    }
+                });
+                foreach (var bitmap in this._bitmaps)
+                {
+                    pe.Graphics.DrawImage(bitmap, 0, 0);
+                }
+            }
 
             base.OnPaint(pe);
         }
 
-        private int PlotPoint(PaintEventArgs pe, Pen pen, float halfWidth, float halfHeight, IExpression expression)
+        private void InitializeBitmapArray(int count)
+        {
+            foreach (var b in this._bitmaps)
+            {
+                b.Dispose();
+            }
+
+            this._bitmaps = new Bitmap[count];
+            for (var i = 0; i < count; i++)
+            {
+                this._bitmaps[i] = new Bitmap(this.Width, this.Height);
+            }
+        }
+
+        private int PlotPoint(Graphics graphics, Pen pen, float halfWidth, float halfHeight, IExpression expression)
         {
             var outOfBoundsCount = 0;
             var input = new Dictionary<char, double>
@@ -121,10 +144,7 @@ namespace UI
                 var current = new PointF(plotX, plotY);
                 if (last.HasValue)
                 {
-                    lock (pe.Graphics)
-                    {
-                        pe.Graphics.DrawLine(pen, last.Value, current);
-                    }
+                    graphics.DrawLine(pen, last.Value, current);
                 }
 
                 last = current;
@@ -198,6 +218,7 @@ namespace UI
         protected override void OnResize(EventArgs e)
         {
             // this.ResetViewport(); // Should I reset the viewport on resize?
+            this.InitializeBitmapArray(this.Equations.Count); // Reset the bitmap array
             this.Refresh();
             base.OnResize(e);
         }

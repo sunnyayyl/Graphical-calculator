@@ -33,9 +33,9 @@ namespace UI
 
         protected override void OnPaint(PaintEventArgs pe)
         {
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-            var outOfBoundsCount = 0;
+            // var stopwatch = new Stopwatch();
+            // stopwatch.Start();
+            // var outOfBoundsCount = 0;
             this._renderError = false;
 
             var halfWidth = (float)this.Width / 2 + this._xOffset;
@@ -66,7 +66,8 @@ namespace UI
                 Parallel.ForEach(this.Equations, equation =>
                 {
                     var expression = equation.Expression;
-                    outOfBoundsCount += this.PlotPoint(pe, pen, halfWidth, halfHeight, expression);
+                    // outOfBoundsCount += this.PlotPoint(pe, pen, halfWidth, halfHeight, expression);
+                    this.PlotPoint(pe, pen, halfWidth, halfHeight, expression);
                 });
                 // if (this._expressions.Count > 0)
                 // {
@@ -74,13 +75,13 @@ namespace UI
                 // }
             }
 
-            stopwatch.Stop();
-            if (!this.DesignMode)
-            {
-                Debug.WriteLine(
-                    $"Calculated ~{Width / (Width * (this.SampleDistance / this._xScale)) * this.Equations.Count} points in {stopwatch.ElapsedMilliseconds}ms");
-                Debug.WriteLineIf(outOfBoundsCount > 0, $"Skipped {outOfBoundsCount} out of bound points");
-            }
+            // stopwatch.Stop();
+            // if (!this.DesignMode)
+            // {
+            //     Debug.WriteLine(
+            //         $"Calculated ~{Width / (Width * (this.SampleDistance / this._xScale)) * this.Equations.Count} points in {stopwatch.ElapsedMilliseconds}ms");
+            //     Debug.WriteLineIf(outOfBoundsCount > 0, $"Skipped {outOfBoundsCount} out of bound points");
+            // }
 
             base.OnPaint(pe);
         }

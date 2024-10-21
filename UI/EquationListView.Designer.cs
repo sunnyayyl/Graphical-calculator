@@ -50,15 +50,16 @@ partial class EquationListView
         // 
         // tableLayoutPanel2
         // 
+        tableLayoutPanel2.AutoScroll = true;
         tableLayoutPanel2.ColumnCount = 1;
-        tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+        tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         tableLayoutPanel2.Controls.Add(addNew, 0, 1);
         tableLayoutPanel2.Controls.Add(tableLayoutPanel1, 0, 0);
         tableLayoutPanel2.Dock = DockStyle.Fill;
         tableLayoutPanel2.Location = new Point(0, 0);
         tableLayoutPanel2.Name = "tableLayoutPanel2";
         tableLayoutPanel2.RowCount = 2;
-        tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+        tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Absolute, 29F));
         tableLayoutPanel2.Size = new Size(212, 150);
         tableLayoutPanel2.TabIndex = 1;
